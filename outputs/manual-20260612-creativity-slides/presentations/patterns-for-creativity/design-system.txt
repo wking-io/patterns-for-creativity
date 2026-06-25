@@ -1,0 +1,57 @@
+slide size: 1280x720
+
+background system:
+- Deep ink base (#08111F) for argument and section slides.
+- Warm paper base (#F6EFE2) for pattern/tool slides.
+- Occasional split backgrounds for contrast.
+
+typography:
+- Titles: Aptos Display, 44-64px, bold.
+- Section claims: Aptos Display, 62-76px, bold.
+- Body/labels: Aptos, 16-26px.
+- Small notes/footers: Aptos, 10-12px.
+
+palette:
+- Ink: #08111F
+- Paper: #F6EFE2
+- Bone: #FFF8EA
+- Amber: #F5B85C
+- Cyan: #54C7D4
+- Coral: #F16D5B
+- Green: #86C26A
+- Muted line: #8B96A8
+
+chart and diagram grammar:
+- Use editable shapes with direct labels.
+- Use amber for creativity, cyan for AI/factory, coral for friction/unknowns, green for signal/learning.
+- Lines are hairline or 2px; arrows only when direction matters.
+
+container grammar:
+- Rounded rectangles only for lanes, placeholders, or grouped model components.
+- No decorative card grids.
+
+source/footer grammar:
+- Bottom-left slide number and short source note at 10px.
+- Footer is quiet and omitted on cover/section reset slides when visual purity helps.
+
+title/kicker grammar:
+- Kicker in uppercase 11px, amber or muted ink.
+- Claim title is a sentence with a conclusion.
+
+layout families:
+- Cover contrast
+- Loop/flow diagram
+- Matrix
+- Split contrast
+- Quote
+- Two-axis model
+- Placeholder asset stage
+- Section reset
+- Process path
+- Closing thesis
+
+banned motifs:
+- Generic AI sparkles.
+- Decorative blobs/orbs.
+- Fake logos or app icons.
+- Dense paragraph slides.
