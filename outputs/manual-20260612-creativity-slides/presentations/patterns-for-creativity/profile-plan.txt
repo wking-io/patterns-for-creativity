@@ -1,0 +1,31 @@
+task mode: create
+primary deck-profile: strategy-leadership
+secondary gates: engineering-platform, product-platform
+
+required proof objects:
+- product-loop flow
+- role-to-loop matrix
+- defined-outcome vs unknown-outcome contrast
+- expansion/contraction rhythm diagram
+- capacity/craft model
+- creativity path diagram
+- pattern section markers and example slots
+
+source/asset requirements:
+- Source is local Notion export at /Users/wking/Developer/patterns-for-creativity/notion-patterns-for-creativity-script.md.
+- No metrics or external facts are used.
+- Tweets, product screenshots, and demos referenced in the script are preserved as asset placeholders.
+
+brand authenticity constraints:
+- Do not invent third-party logos or app marks for examples.
+- Use neutral labels for example slots until verified assets are provided.
+
+profile-specific QA gates:
+- Every slide needs a speaker-friendly claim rather than paragraph transcript.
+- Proof objects should be editable shapes and diagrams.
+- Section transitions should be visually distinct from pattern/detail slides.
+
+known missing inputs:
+- Actual tweet screenshots/bookmarks.
+- Collage or mymind library visual.
+- Product/demo screenshots: game engine, Soundfall, Synth, landing page, Paper MCP, Music Tool, Belt.

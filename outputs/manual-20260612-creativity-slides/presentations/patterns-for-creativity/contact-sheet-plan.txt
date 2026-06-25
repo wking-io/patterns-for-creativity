@@ -1,0 +1,31 @@
+01 cover contrast
+02 loop flow
+03 role map
+04 nested matrix
+05 contrast comparison
+06 factory lane
+07 handoff diagram
+08 section reset
+09 trope vs discovery split
+10 unknown map
+11 decision gate
+12 messy path
+13 inevitable path
+14 cycle diagram
+15 quote
+16 two-axis model
+17 ceiling model
+18 catalyst chain
+19 pattern title with pause visual
+20 asset placeholder stage
+21 lens formula
+22 constellation
+23 compounding nodes
+24 funnel
+25 learn/build loop
+26 zoom aperture
+27 language ladder
+28 fantasy/reality contrast
+29 workbench
+30 fidelity loop
+31 closing thesis

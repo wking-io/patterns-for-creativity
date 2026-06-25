@@ -1,0 +1,11 @@
+Primary source:
+/Users/wking/Developer/patterns-for-creativity/notion-patterns-for-creativity-script.md
+
+Extraction boundary:
+Everything before the first Notion divider in the "Patterns for Creativity" page.
+
+External sources:
+None fetched or embedded. The deck keeps referenced tweets/screenshots as placeholders because the script names them but does not provide verified source assets.
+
+Identity asset policy:
+No third-party logos, screenshots, product marks, or app icons are drawn or approximated.
