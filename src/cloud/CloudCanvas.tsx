@@ -9,7 +9,7 @@ import { drawBackground, drawCloudFieldFill, drawDotGrid, drawSegments } from ".
 import type { CloudSettings, Metaball, Noise2D, Segment } from "./types";
 import { slideWidth } from "../slideMetrics";
 
-export function CloudCanvas() {
+export function CloudCanvas({ className = "" }: { className?: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const noiseSeed = edgeBandsCloudSettings.seed;
   const noise2D = useMemo(() => createNoise2D(createSeededRandom(noiseSeed)), [noiseSeed]);
@@ -126,7 +126,7 @@ export function CloudCanvas() {
     };
   }, [noise2D, noiseSeed]);
 
-  return <canvas aria-label="Animated line-art cloud contours" className="cloud-contour-canvas" ref={canvasRef} />;
+  return <canvas aria-label="Animated line-art cloud contours" className={`${className}`.trim()} ref={canvasRef} />;
 }
 
 function scaleSettingsForCanvas(settings: CloudSettings, width: number): CloudSettings {
