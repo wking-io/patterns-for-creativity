@@ -131,6 +131,10 @@ body {
   width: 100%;
 }
 
+.slide-frame--contained-light {
+  background: linear-gradient(135deg, var(--color-p0) 0%, var(--color-p1) 100%);
+}
+
 .slide-content {
   height: 100%;
   width: 100%;
@@ -155,13 +159,22 @@ body {
   overflow: hidden;
 }
 
-.slide-panel--contained {
-  background: var(--color-dark-s0);
+.slide-panel--contained,
+.slide-panel--contained-light {
   border: 0 solid transparent;
   border-bottom-left-radius: var(--radius-contained);
   border-top-right-radius: var(--radius-contained);
-  color: var(--color-dark-t0);
   inset: var(--slide-grid-margin);
+}
+
+.slide-panel--contained {
+  background: var(--color-dark-s0);
+  color: var(--color-dark-t0);
+}
+
+.slide-panel--contained-light {
+  background: var(--color-light-s0);
+  color: var(--color-light-t0);
 }
 
 .title-slide-footer {

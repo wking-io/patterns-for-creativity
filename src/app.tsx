@@ -4,6 +4,7 @@ import "reveal.js/reveal.css";
 import { TitleSlide } from "./slides/00-title";
 import { slideHeight, slideWidth } from "./slideMetrics";
 import { ThinkSlide } from "./slides/01-think";
+import { OutputSlide } from "./slides/02-output";
 import { SlideFrame } from "./slides/SlideFrame";
 import type { SlideKind } from "./slides/SlideFrame";
 
@@ -20,7 +21,11 @@ const slides: Slide[] = [
   {
     kind: "contained-dark",
     content: ThinkSlide,
-  }
+  },
+  {
+    kind: "contained-light",
+    content: OutputSlide,
+  },
 ];
 
 export function App() {

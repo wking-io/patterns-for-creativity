@@ -28,4 +28,13 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     label: "Think",
     transition: spring,
   },
+  {
+    id: "output",
+    kind: "contained-light",
+    label: "Output",
+    transition: {
+      duration: 0.54,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
 ];

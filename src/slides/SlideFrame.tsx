@@ -23,10 +23,12 @@ export function SlideFrame({ children, isGridVisible = false, kind }: SlideFrame
     );
   }
 
-  if (kind === "contained-dark") {
+  if (kind === "contained-dark" || kind === "contained-light") {
+    const isContainedLight = kind === "contained-light";
+
     return (
-      <section className="slide-frame bg-light-s0">
-        <div className="slide-panel slide-panel--contained">
+      <section className={`slide-frame ${isContainedLight ? "slide-frame--contained-light" : "bg-light-s0"}`}>
+        <div className={`slide-panel ${isContainedLight ? "slide-panel--contained-light" : "slide-panel--contained"}`}>
           {children}
         </div>
         <SlideTextureOverlay />

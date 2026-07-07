@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import type { Transition, Variants } from "motion/react";
 import { TitleSlide } from "../slides/00-title";
+import { OutputSlide } from "../slides/02-output";
 import howYouUrl from "../slides/01-think/how-you.svg";
 import mustChangeUrl from "../slides/01-think/must-change.svg";
 import thinkGraffitiUrl from "../slides/01-think/think-graffiti.svg";
@@ -15,22 +16,38 @@ type MotionStageProps = {
 
 export function MotionStage({ direction, frame }: MotionStageProps) {
   const isCoverFrame = frame.kind === "cover";
+  const isOutputFrame = frame.kind === "contained-light";
 
   return (
     <section
-      className="motion-deck-stage slide-frame bg-light-s0 text-light-t0"
+      className={[
+        "motion-deck-stage",
+        "slide-frame",
+        "text-light-t0",
+        isOutputFrame ? "slide-frame--contained-light" : "bg-light-s0",
+      ].join(" ")}
       data-frame-id={frame.id}
     >
       <motion.div
         className={[
           "slide-panel",
-          isCoverFrame ? "slide-panel--cover" : "slide-panel--contained",
+          isCoverFrame
+            ? "slide-panel--cover"
+            : isOutputFrame
+              ? "slide-panel--contained-light"
+              : "slide-panel--contained",
           "motion-deck-panel",
         ].join(" ")}
         layout
         transition={frame.transition}
       >
-        {isCoverFrame ? <TitleSlide className="slide-content" /> : <MotionThinkContent />}
+        {isCoverFrame ? (
+          <TitleSlide className="slide-content" />
+        ) : isOutputFrame ? (
+          <OutputSlide className="slide-content" />
+        ) : (
+          <MotionThinkContent />
+        )}
       </motion.div>
 
       {isCoverFrame ? <TitleSlideFooter /> : null}
