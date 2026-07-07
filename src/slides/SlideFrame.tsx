@@ -42,7 +42,7 @@ export function SlideFrame({ children, isGridVisible = false, kind }: SlideFrame
   );
 }
 
-function TitleSlideFooter() {
+export function TitleSlideFooter() {
   return (
     <div aria-hidden="true" className="title-slide-footer">
       <span>CAN DO YOUR JOB</span>
@@ -72,7 +72,7 @@ function SlideGridOverlay({ enabled }: { enabled: boolean }) {
   );
 }
 
-function SlideTextureOverlay() {
+export function SlideTextureOverlay() {
   return (
     <>
       <img alt="" aria-hidden="true" className="slide-texture-overlay slide-texture-overlay--color-burn" src={filterTextureUrl} />
