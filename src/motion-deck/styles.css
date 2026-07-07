@@ -29,7 +29,13 @@
   width: 100%;
 }
 
-.motion-deck-slide {
-  inset: 0;
-  position: absolute;
+.motion-deck-panel.slide-panel--cover {
+  left: 2.663825%;
+  transform: none;
+}
+
+.motion-deck-think-sequence {
+  height: 100%;
+  position: relative;
+  width: 100%;
 }
