@@ -34,6 +34,15 @@
   transform: none;
 }
 
+.motion-deck-panel.slide-panel--contained-light.motion-deck-panel--output-enter {
+  background: transparent;
+  overflow: hidden;
+}
+
+.motion-deck-panel--output-enter .output-slide {
+  z-index: 1;
+}
+
 .motion-deck-think-sequence {
   height: 100%;
   position: relative;

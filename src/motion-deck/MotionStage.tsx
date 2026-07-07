@@ -37,6 +37,7 @@ export function MotionStage({ direction, frame }: MotionStageProps) {
               ? "slide-panel--contained-light"
               : "slide-panel--contained",
           "motion-deck-panel",
+          isOutputFrame && direction > 0 ? "motion-deck-panel--output-enter" : "",
         ].join(" ")}
         layout
         transition={frame.transition}
@@ -44,7 +45,7 @@ export function MotionStage({ direction, frame }: MotionStageProps) {
         {isCoverFrame ? (
           <TitleSlide className="slide-content" />
         ) : isOutputFrame ? (
-          <OutputSlide className="slide-content" />
+          <OutputSlide className="slide-content" isAnimated={direction > 0} />
         ) : (
           <MotionThinkContent />
         )}
@@ -113,7 +114,7 @@ const thinkItemVariants: Record<"how" | "center" | "must", Variants> = {
     show: {
       opacity: 1,
       y: 0,
-      transition: { ...itemTransition, delay: 0.08 },
+      transition: { ...itemTransition },
     },
   },
   center: {
@@ -121,7 +122,7 @@ const thinkItemVariants: Record<"how" | "center" | "must", Variants> = {
     show: {
       opacity: 1,
       scale: 1,
-      transition: { ...itemTransition, delay: 0.2, duration: 0.38 },
+      transition: { ...itemTransition, delay: 0.2, duration: 0.3 },
     },
   },
   must: {
@@ -129,7 +130,7 @@ const thinkItemVariants: Record<"how" | "center" | "must", Variants> = {
     show: {
       opacity: 1,
       y: 0,
-      transition: { ...itemTransition, delay: 0.34 },
+      transition: { ...itemTransition, delay: 0.15 },
     },
   },
 };

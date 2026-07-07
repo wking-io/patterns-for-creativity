@@ -93,37 +93,6 @@ body {
   mask-size: contain;
 }
 
-.reveal {
-  background: #000000;
-  font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  height: 100dvh;
-  max-width: 100dvw;
-  overflow: hidden;
-  width: 100dvw;
-}
-
-.reveal .slides {
-  text-align: left;
-}
-
-.reveal .slides section {
-  aspect-ratio: 3754 / 2112;
-  height: 719.8082px;
-  overflow: hidden;
-  padding: 0;
-  width: 1280px;
-}
-
-.reveal .slides section:not(.present) {
-  pointer-events: none;
-  visibility: hidden;
-}
-
-.reveal .slides section.present {
-  visibility: visible;
-}
-
 .slide-frame {
   height: 100%;
   isolation: isolate;
@@ -164,7 +133,7 @@ body {
   border: 0 solid transparent;
   border-bottom-left-radius: var(--radius-contained);
   border-top-right-radius: var(--radius-contained);
-  inset: var(--slide-grid-margin);
+  inset: var(--slide-grid-row-margin) var(--slide-grid-margin);
 }
 
 .slide-panel--contained {
@@ -175,6 +144,63 @@ body {
 .slide-panel--contained-light {
   background: var(--color-light-s0);
   color: var(--color-light-t0);
+}
+
+.output-slide {
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+}
+
+.output-slide__panel-background {
+  background: var(--color-light-s0);
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 0;
+}
+
+.output-slide__arrow {
+  display: block;
+  height: 26%;
+  left: 33%;
+  overflow: visible;
+  position: absolute;
+  top: 37%;
+  width: 34%;
+  z-index: 2;
+}
+
+.output-slide__arrow .cls-1,
+.output-slide__arrow .cls-2 {
+  stroke: var(--color-light-t0);
+  stroke-linejoin: round;
+  stroke-width: 4px;
+}
+
+.output-slide__arrow .cls-1 {
+  fill: none;
+}
+
+.output-slide__arrow .cls-3 {
+  fill: url("#output-arrow-gradient");
+}
+
+.output-slide__text {
+  display: block;
+  position: absolute;
+  top: 42%;
+  user-select: none;
+  width: 21%;
+  z-index: 3;
+}
+
+.output-slide__text--engineer {
+  left: 10.5%;
+}
+
+.output-slide__text--code {
+  right: 10.5%;
 }
 
 .title-slide-footer {
@@ -213,102 +239,4 @@ body {
 .slide-texture-overlay--soft-light {
   mix-blend-mode: soft-light;
   z-index: 21;
-}
-
-.slide-grid-overlay {
-  inset: 0;
-  pointer-events: none;
-  position: absolute;
-  z-index: 40;
-}
-
-.slide-grid-overlay__columns,
-.slide-grid-overlay__rows {
-  display: grid;
-  inset: 0;
-  position: absolute;
-}
-
-.slide-grid-overlay__columns {
-  grid-template-columns:
-    var(--slide-grid-margin) minmax(0, 1fr) var(--slide-grid-gutter) minmax(0, 1fr) var(--slide-grid-gutter) minmax(0, 1fr) var(--slide-grid-gutter) minmax(0, 1fr) var(--slide-grid-gutter) minmax(0, 1fr) var(--slide-grid-gutter) minmax(0, 1fr) var(--slide-grid-margin);
-}
-
-.slide-grid-overlay__rows {
-  grid-template-rows:
-    var(--slide-grid-row-margin) minmax(0, 1fr) var(--slide-grid-row-gutter) minmax(0, 1fr) var(--slide-grid-row-gutter) minmax(0, 1fr) var(--slide-grid-row-gutter) minmax(0, 1fr) var(--slide-grid-row-gutter) minmax(0, 1fr) var(--slide-grid-row-gutter) minmax(0, 1fr) var(--slide-grid-row-margin);
-}
-
-.slide-grid-overlay__columns span,
-.slide-grid-overlay__rows span {
-  background: rgba(84, 199, 212, 0.16);
-  min-width: 0;
-}
-
-.slide-grid-overlay__columns span {
-  border-inline: 1px solid rgba(84, 199, 212, 0.52);
-}
-
-.slide-grid-overlay__rows span {
-  border-block: 1px solid rgba(245, 184, 92, 0.52);
-}
-
-.slide-grid-overlay__columns span:nth-child(1) {
-  grid-column: 2;
-}
-
-.slide-grid-overlay__columns span:nth-child(2) {
-  grid-column: 4;
-}
-
-.slide-grid-overlay__columns span:nth-child(3) {
-  grid-column: 6;
-}
-
-.slide-grid-overlay__columns span:nth-child(4) {
-  grid-column: 8;
-}
-
-.slide-grid-overlay__columns span:nth-child(5) {
-  grid-column: 10;
-}
-
-.slide-grid-overlay__columns span:nth-child(6) {
-  grid-column: 12;
-}
-
-.slide-grid-overlay__rows span:nth-child(1) {
-  grid-row: 2;
-}
-
-.slide-grid-overlay__rows span:nth-child(2) {
-  grid-row: 4;
-}
-
-.slide-grid-overlay__rows span:nth-child(3) {
-  grid-row: 6;
-}
-
-.slide-grid-overlay__rows span:nth-child(4) {
-  grid-row: 8;
-}
-
-.slide-grid-overlay__rows span:nth-child(5) {
-  grid-row: 10;
-}
-
-.slide-grid-overlay__rows span:nth-child(6) {
-  grid-row: 12;
-}
-
-.reveal .controls {
-  display: none;
-}
-
-.reveal .progress {
-  color: var(--amber);
-}
-
-.reveal .slide-number {
-  display: none;
 }

@@ -75,11 +75,11 @@ export function offlineCachePlugin(): PluginOption {
       );
       await writeFile(
         path.join(outDir, "offline.html"),
-        await getSingleFileHtml({ assets, forceMotionDeck: false, indexHtml, outDir }),
+        await getSingleFileHtml({ assets, indexHtml, outDir }),
       );
       await writeFile(
         path.join(outDir, "motion-deck.html"),
-        await getSingleFileHtml({ assets, forceMotionDeck: true, indexHtml, outDir }),
+        await getSingleFileHtml({ assets, indexHtml, outDir }),
       );
     },
   };
@@ -205,12 +205,10 @@ self.addEventListener("fetch", (event) => {
 
 async function getSingleFileHtml({
   assets,
-  forceMotionDeck,
   indexHtml,
   outDir,
 }: {
   assets: OfflineAsset[];
-  forceMotionDeck: boolean;
   indexHtml: string;
   outDir: string;
 }) {
@@ -229,19 +227,28 @@ async function getSingleFileHtml({
   });
   const script = applyDataUrlReplacements(await readFile(scriptPath, "utf8"), replacements);
   const style = applyDataUrlReplacements(await readFile(stylePath, "utf8"), replacements);
-  const forceMotionScript = forceMotionDeck ? "\n    <script>window.__FORCE_MOTION_DECK = true;</script>" : "";
 
   return indexHtml
     .replace(/<script\b[^>]*\bsrc="[^"]*"\s*><\/script>/, "")
     .replace(/<link\b[^>]*\bhref="[^"]*\.css"[^>]*>/, "")
     .replace(
       "</head>",
-      `    <style>${style}</style>${forceMotionScript}\n  </head>`,
+      () => `    <style>${escapeInlineStyle(style)}</style>\n  </head>`,
     )
     .replace(
       "</body>",
-      `    <script type="module">${script}</script>\n  </body>`,
+      () => `    <script type="module">${escapeInlineScript(script)}</script>\n  </body>`,
     );
+}
+
+function escapeInlineScript(source: string) {
+  return source
+    .replace(/<\/script/gi, "<\\/script")
+    .replace(/<!--/g, "<\\!--");
+}
+
+function escapeInlineStyle(source: string) {
+  return source.replace(/<\/style/gi, "<\\/style");
 }
 
 async function getAssetDataUrlReplacements({ assets, outDir }: { assets: OfflineAsset[]; outDir: string }) {
