@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 558 230">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+      }
+
+      .cls-1, .cls-2 {
+        stroke: #372e2a;
+        stroke-linejoin: round;
+        stroke-width: 4px;
+      }
+
+      .cls-3 {
+        fill: url(#linear-gradient);
+      }
+
+      .cls-2 {
+        fill: #fff;
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="2" y1="94.75" x2="556" y2="94.75" gradientTransform="translate(0 252) scale(1 -1)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f3f1f1"/>
+      <stop offset=".76" stop-color="#b8b8b8"/>
+      <stop offset=".77" stop-color="#f3f1f1"/>
+    </linearGradient>
+  </defs>
+  <g id="Layer_1-2" data-name="Layer 1">
+    <g>
+      <path class="cls-3" d="M556,86.5v56.66l-134,84.84.5-27.28H2v-56.66h420.5l-.5,27.28,134-84.84h0Z"/>
+      <polygon class="cls-2" points="2 144.06 2 28.12 422.5 28.12 422.5 2 556 86.5 422 171.34 422.5 144.06 2 144.06"/>
+      <polyline class="cls-1" points="2 144.06 2 200.72 422.5 200.72 422 228 556 143.16 556 86.5"/>
+    </g>
+  </g>
+</svg>
