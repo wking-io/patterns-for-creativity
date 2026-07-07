@@ -33,8 +33,8 @@ export const edgeBandsCloudSettings: CloudSettings = {
   },
   style: {
     backgroundGradient: ["#ff6453", "#ffc09b", "#ffe1b5"],
-    cloudFillColor: "#eff3ee",
-    strokeColor: "#1D1D16",
+    cloudFillColor: "#f3f1f1",
+    strokeColor: "#372e2a",
     lineWidth: 0.5,
   },
   dots: {

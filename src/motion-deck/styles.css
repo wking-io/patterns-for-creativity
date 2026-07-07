@@ -1,0 +1,35 @@
+.motion-deck-root {
+  align-items: center;
+  background: #000000;
+  display: flex;
+  height: 100dvh;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  touch-action: pan-y;
+  width: 100dvw;
+}
+
+.motion-deck-viewport {
+  --motion-deck-height: min(100dvh, calc(100dvw * 2112 / 3754));
+  aspect-ratio: 3754 / 2112;
+  height: var(--motion-deck-height);
+  position: relative;
+  width: min(100dvw, calc(100dvh * 3754 / 2112));
+}
+
+.motion-deck-stage {
+  --slide-coordinate-height: var(--motion-deck-height);
+  --radius-contained: calc(var(--slide-coordinate-height) * 0.065);
+  --title-footer-font-size: calc(var(--slide-coordinate-height) * 0.04);
+  height: 100%;
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}
+
+.motion-deck-slide {
+  inset: 0;
+  position: absolute;
+}
