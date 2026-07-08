@@ -8,7 +8,8 @@
     "dev": "vite --host 127.0.0.1 --configLoader runner",
     "dev:lan": "vite --host 0.0.0.0 --configLoader runner",
     "preview:lan": "vite preview --host 0.0.0.0 --configLoader runner",
-    "preview": "vite preview --host 127.0.0.1 --configLoader runner"
+    "preview": "vite preview --host 127.0.0.1 --configLoader runner",
+    "test": "vitest run"
   },
   "dependencies": {
     "dialkit": "^1.3.0",
@@ -24,6 +25,7 @@
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
     "tailwindcss": "^4.3.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
   }
 }
