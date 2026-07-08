@@ -1,7 +1,7 @@
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { PluginOption } from "vite";
-import { createOfflineAssetManifest, type OfflineAsset } from "./src/offline-package.ts";
+import { createOfflineAssetManifest, type OfflineAsset } from "./src/offline-package.js";
 
 const assetExtensions = new Set([
   ".avif",
