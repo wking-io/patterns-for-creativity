@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": false,
+    "noEmit": false,
+    "outDir": ".tmp/tests",
+    "types": ["vite/client", "node"]
+  },
+  "include": [
+    "src",
+    "tests",
+    "vite.config.ts",
+    "offline-cache-plugin.ts"
+  ]
+}
+
