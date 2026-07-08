@@ -3,12 +3,12 @@ import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { getSingleFileHtml } from "../offline-cache-plugin.ts";
+import { getSingleFileHtml } from "../offline-cache-plugin.js";
 import {
   createOfflineAssetManifest,
   validateOfflineAssetManifest,
   type OfflineAsset,
-} from "../src/offline-package.ts";
+} from "../src/offline-package.js";
 
 test("creates and validates the shared offline manifest shape", () => {
   const assets: OfflineAsset[] = [
