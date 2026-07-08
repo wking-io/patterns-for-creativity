@@ -7,6 +7,7 @@
     "check": "tsc -p tsconfig.json",
     "dev": "vite --host 127.0.0.1 --configLoader runner",
     "dev:lan": "vite --host 0.0.0.0 --configLoader runner",
+    "test": "node --experimental-strip-types tests/offline-package.test.ts",
     "preview:lan": "vite preview --host 0.0.0.0 --configLoader runner",
     "preview": "vite preview --host 127.0.0.1 --configLoader runner"
   },
