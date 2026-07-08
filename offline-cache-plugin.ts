@@ -1,12 +1,7 @@
 import { readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { PluginOption } from "vite";
-
-type OfflineAsset = {
-  bytes: number;
-  kind: "document" | "font" | "image" | "script" | "style" | "other";
-  url: string;
-};
+import { createOfflineAssetManifest, type OfflineAsset } from "./src/offline-package.ts";
 
 const assetExtensions = new Set([
   ".avif",
@@ -55,11 +50,7 @@ export function offlineCachePlugin(): PluginOption {
           }),
       );
       const indexHtml = await readFile(path.join(outDir, "index.html"), "utf8");
-      const manifest = {
-        assets,
-        buildTime: new Date().toISOString(),
-        totalBytes: assets.reduce((total, asset) => total + asset.bytes, 0),
-      };
+      const manifest = createOfflineAssetManifest({ assets });
 
       await writeFile(
         path.join(outDir, "offline-asset-manifest.json"),
@@ -203,7 +194,7 @@ self.addEventListener("fetch", (event) => {
 `;
 }
 
-async function getSingleFileHtml({
+export async function getSingleFileHtml({
   assets,
   indexHtml,
   outDir,
