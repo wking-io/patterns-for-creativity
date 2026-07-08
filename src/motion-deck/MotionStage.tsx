@@ -6,15 +6,16 @@ import howYouUrl from "../slides/01-think/how-you.svg";
 import mustChangeUrl from "../slides/01-think/must-change.svg";
 import thinkGraffitiUrl from "../slides/01-think/think-graffiti.svg";
 import thinkUrl from "../slides/01-think/think.svg";
-import { SlideTextureOverlay, TitleSlideFooter } from "../slides/SlideFrame";
+import { SlideGridOverlay, SlideTextureOverlay, TitleSlideFooter } from "../slides/SlideFrame";
 import type { MotionDeckFrame } from "./frames";
 
 type MotionStageProps = {
   direction: number;
   frame: MotionDeckFrame;
+  isGridVisible: boolean;
 };
 
-export function MotionStage({ direction, frame }: MotionStageProps) {
+export function MotionStage({ direction, frame, isGridVisible }: MotionStageProps) {
   const isCoverFrame = frame.kind === "cover";
   const isOutputFrame = frame.kind === "contained-light";
 
@@ -53,6 +54,7 @@ export function MotionStage({ direction, frame }: MotionStageProps) {
 
       {isCoverFrame ? <TitleSlideFooter /> : null}
       <SlideTextureOverlay />
+      <SlideGridOverlay enabled={isGridVisible} />
     </section>
   );
 }
@@ -118,7 +120,7 @@ const thinkItemVariants: Record<"how" | "center" | "must", Variants> = {
     },
   },
   center: {
-    hidden: { opacity: 0, scale: 0.8 },
+    hidden: { opacity: 0, scale: 0.9 },
     show: {
       opacity: 1,
       scale: 1,
