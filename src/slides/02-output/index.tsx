@@ -98,7 +98,7 @@ function AnimatedArrow({
   const arrowStyle = {
     height: `${mix(100, 13, morphScaleProgress)}%`,
     left: `${mix(0, 41.5, morphScaleProgress)}%`,
-    top: `${mix(0, 43.5, morphScaleProgress)}%`,
+    top: `${mix(0, 45, morphScaleProgress)}%`,
     width: `${mix(100, 17, morphScaleProgress)}%`,
   };
   const topPoints = isAnimated

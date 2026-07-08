@@ -2,33 +2,36 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
 import { motionDeckFrames } from "./frames";
 import { MotionStage } from "./MotionStage";
+import {
+  createFrameHash,
+  getFrameIndexFromHash,
+  getInitialDeckNavigationState,
+  getKeyboardNavigationIntent,
+  getSwipeNavigationIntent,
+  resolveFrameNavigation,
+} from "./navigation";
 import "./styles.css";
 
-const firstFrameIndex = 0;
-const lastFrameIndex = motionDeckFrames.length - 1;
-const nextFrameKeys = new Set(["ArrowRight", "ArrowDown", "PageDown", " ", "Spacebar", "Enter", "n", "N"]);
-const nextFrameCodes = new Set(["ArrowRight", "ArrowDown", "PageDown", "Space", "Enter", "KeyN", "NumpadEnter"]);
-const previousFrameKeys = new Set(["ArrowLeft", "ArrowUp", "PageUp", "Backspace", "p", "P"]);
-const previousFrameCodes = new Set(["ArrowLeft", "ArrowUp", "PageUp", "Backspace", "KeyP"]);
+const frameCount = motionDeckFrames.length;
 
 export function MotionDeckApp() {
-  const [frameIndex, setFrameIndex] = useState(() => getFrameIndexFromHash());
-  const [direction, setDirection] = useState(1);
+  const [{ direction, frameIndex }, setNavigation] = useState(() => (
+    getInitialDeckNavigationState(window.location.hash, frameCount)
+  ));
   const [isGridVisible, setIsGridVisible] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | undefined>(undefined);
-  const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[firstFrameIndex];
+  const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[0];
 
   const goToFrame = useCallback((nextIndex: number) => {
-    setFrameIndex((currentIndex) => {
-      const clampedIndex = clampFrameIndex(nextIndex);
+    setNavigation((currentState) => {
+      const nextNavigation = resolveFrameNavigation(currentState, nextIndex, frameCount);
 
-      if (clampedIndex === currentIndex) {
-        return currentIndex;
+      if (!nextNavigation.didChange) {
+        return currentState;
       }
 
-      setDirection(clampedIndex > currentIndex ? 1 : -1);
-      writeFrameHash(clampedIndex);
-      return clampedIndex;
+      writeFrameHash(nextNavigation.state.frameIndex);
+      return nextNavigation.state;
     });
   }, []);
 
@@ -45,15 +48,11 @@ export function MotionDeckApp() {
 
   useEffect(() => {
     const handleHashChange = () => {
-      setFrameIndex((currentIndex) => {
-        const nextIndex = getFrameIndexFromHash();
+      setNavigation((currentState) => {
+        const nextIndex = getFrameIndexFromHash(window.location.hash, frameCount);
+        const nextNavigation = resolveFrameNavigation(currentState, nextIndex, frameCount);
 
-        if (nextIndex === currentIndex) {
-          return currentIndex;
-        }
-
-        setDirection(nextIndex > currentIndex ? 1 : -1);
-        return nextIndex;
+        return nextNavigation.state;
       });
     };
 
@@ -70,18 +69,21 @@ export function MotionDeckApp() {
         return;
       }
 
-      if (isGridToggleEvent(event)) {
+      const intent = getKeyboardNavigationIntent(event);
+
+      if (intent === "toggle-grid") {
         event.preventDefault();
         setIsGridVisible((isVisible) => !isVisible);
         return;
       }
 
-      if (nextFrameKeys.has(event.key) || nextFrameCodes.has(event.code)) {
+      if (intent === "next") {
         event.preventDefault();
         controls.goNext();
+        return;
       }
 
-      if (previousFrameKeys.has(event.key) || previousFrameCodes.has(event.code)) {
+      if (intent === "previous") {
         event.preventDefault();
         controls.goPrevious();
       }
@@ -113,14 +115,13 @@ export function MotionDeckApp() {
       return;
     }
 
-    const deltaX = touch.clientX - start.x;
-    const deltaY = touch.clientY - start.y;
+    const intent = getSwipeNavigationIntent(start, { x: touch.clientX, y: touch.clientY });
 
-    if (Math.abs(deltaX) < 48 || Math.abs(deltaX) < Math.abs(deltaY) * 1.25) {
+    if (!intent) {
       return;
     }
 
-    if (deltaX < 0) {
+    if (intent === "next") {
       controls.goNext();
     } else {
       controls.goPrevious();
@@ -142,16 +143,8 @@ export function MotionDeckApp() {
   );
 }
 
-function getFrameIndexFromHash() {
-  const hash = window.location.hash;
-  const match = hash.match(/motion-deck\/(\d+)/) ?? hash.match(/^#\/?(\d+)$/);
-  const parsedIndex = match ? Number.parseInt(match[1], 10) - 1 : firstFrameIndex;
-
-  return clampFrameIndex(parsedIndex);
-}
-
 function writeFrameHash(frameIndex: number, mode: "push" | "replace" = "push") {
-  const nextHash = `#/motion-deck/${frameIndex + 1}`;
+  const nextHash = createFrameHash(frameIndex, frameCount);
 
   if (window.location.hash === nextHash) {
     return;
@@ -165,14 +158,6 @@ function writeFrameHash(frameIndex: number, mode: "push" | "replace" = "push") {
   window.history.pushState(null, "", nextHash);
 }
 
-function clampFrameIndex(index: number) {
-  if (!Number.isFinite(index)) {
-    return firstFrameIndex;
-  }
-
-  return Math.min(lastFrameIndex, Math.max(firstFrameIndex, index));
-}
-
 function isEditableTarget(target: EventTarget | null) {
   return (
     target instanceof HTMLInputElement ||
@@ -180,8 +165,4 @@ function isEditableTarget(target: EventTarget | null) {
     target instanceof HTMLSelectElement ||
     (target instanceof HTMLElement && target.isContentEditable)
   );
-}
-
-function isGridToggleEvent(event: KeyboardEvent) {
-  return event.shiftKey && (event.key.toLowerCase() === "g" || event.code === "KeyG");
 }

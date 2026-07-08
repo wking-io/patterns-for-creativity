@@ -1,7 +1,7 @@
 # Deepen Deck Navigation Module
 
 Type: AFK
-Status: Open
+Status: Done
 
 ## What to build
 
@@ -11,16 +11,15 @@ Keep Dialkit mounted and available for future controls. The new navigation shape
 
 ## Acceptance criteria
 
-- [ ] `/` and `/motion-deck` still render the motion deck.
-- [ ] Direct hashes such as `#/motion-deck/2` still open the expected frame.
-- [ ] Keyboard next and previous controls preserve current behavior.
-- [ ] Swipe next and previous controls preserve current behavior.
-- [ ] Frame direction is still available to motion transitions.
-- [ ] Hash parsing and frame clamping are covered by focused tests.
-- [ ] `pnpm check` passes.
-- [ ] `pnpm build` passes.
+- [x] `/` renders the motion deck.
+- [x] Direct hashes such as `#/2` still open the expected frame.
+- [x] Keyboard next and previous controls preserve current behavior.
+- [x] Swipe next and previous controls preserve current behavior.
+- [x] Frame direction is still available to motion transitions.
+- [x] Hash parsing and frame clamping are covered by focused tests.
+- [x] `pnpm check` passes.
+- [x] `pnpm build` passes.
 
 ## Blocked by
 
 None - can start immediately.
-
