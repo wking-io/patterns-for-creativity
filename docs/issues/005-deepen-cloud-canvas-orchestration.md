@@ -1,7 +1,7 @@
 # Deepen Cloud Canvas Orchestration
 
 Type: AFK
-Status: Open
+Status: Done
 
 ## What to build
 
@@ -11,15 +11,14 @@ Preserve the title slide's animated line-art cloud contours. Remove anything "co
 
 ## Acceptance criteria
 
-- [ ] The title slide cloud canvas remains visually equivalent to the current version.
-- [ ] React lifecycle code delegates render-loop orchestration to a focused Module.
-- [ ] Canvas scaling behavior is covered by focused tests.
-- [ ] Metaball reset/signature behavior is covered by focused tests.
-- [ ] Render loop cleanup still cancels animation work on unmount.
-- [ ] `pnpm check` passes.
-- [ ] `pnpm build` passes.
+- [x] The title slide cloud canvas remains visually equivalent to the current version.
+- [x] React lifecycle code delegates render-loop orchestration to a focused Module.
+- [x] Canvas scaling behavior is covered by focused tests.
+- [x] Metaball reset/signature behavior is covered by focused tests.
+- [x] Render loop cleanup still cancels animation work on unmount.
+- [x] `pnpm check` passes.
+- [x] `pnpm build` passes.
 
 ## Blocked by
 
 None - can start immediately.
-
