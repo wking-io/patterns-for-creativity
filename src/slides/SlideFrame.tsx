@@ -11,6 +11,27 @@ export function TitleSlideFooter() {
   );
 }
 
+export function SlideGridOverlay({ enabled }: { enabled: boolean }) {
+  if (!enabled) {
+    return null;
+  }
+
+  return (
+    <div aria-hidden="true" className="slide-grid-overlay">
+      <div className="slide-grid-overlay__columns">
+        {Array.from({ length: 6 }, (_, index) => (
+          <span key={index} />
+        ))}
+      </div>
+      <div className="slide-grid-overlay__rows">
+        {Array.from({ length: 6 }, (_, index) => (
+          <span key={index} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function SlideTextureOverlay() {
   return (
     <>

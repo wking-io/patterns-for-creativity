@@ -14,6 +14,7 @@ const previousFrameCodes = new Set(["ArrowLeft", "ArrowUp", "PageUp", "Backspace
 export function MotionDeckApp() {
   const [frameIndex, setFrameIndex] = useState(() => getFrameIndexFromHash());
   const [direction, setDirection] = useState(1);
+  const [isGridVisible, setIsGridVisible] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | undefined>(undefined);
   const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[firstFrameIndex];
 
@@ -66,6 +67,12 @@ export function MotionDeckApp() {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableTarget(event.target)) {
+        return;
+      }
+
+      if (isGridToggleEvent(event)) {
+        event.preventDefault();
+        setIsGridVisible((isVisible) => !isVisible);
         return;
       }
 
@@ -128,7 +135,7 @@ export function MotionDeckApp() {
         onTouchStart={handleTouchStart}
       >
         <div className="motion-deck-viewport">
-          <MotionStage direction={direction} frame={frame} />
+          <MotionStage direction={direction} frame={frame} isGridVisible={isGridVisible} />
         </div>
       </main>
     </MotionConfig>
@@ -173,4 +180,8 @@ function isEditableTarget(target: EventTarget | null) {
     target instanceof HTMLSelectElement ||
     (target instanceof HTMLElement && target.isContentEditable)
   );
+}
+
+function isGridToggleEvent(event: KeyboardEvent) {
+  return event.shiftKey && (event.key.toLowerCase() === "g" || event.code === "KeyG");
 }
