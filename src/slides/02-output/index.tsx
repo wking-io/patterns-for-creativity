@@ -1,12 +1,27 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { motion } from "motion/react";
 import codeUrl from "./code.svg";
+import designerUrl from "./designer.svg";
+import docsUrl from "./docs.svg";
 import engineerUrl from "./engineer.svg";
+import pixelsUrl from "./pixels.svg";
+import productUrl from "./product.svg";
+
+export type OutputSlideVariant = "engineer-code" | "designer-pixels" | "product-docs";
+
+type OutputSlideAnimationMode = "intro" | "replay";
 
 type OutputSlideProps = {
+  animationMode?: OutputSlideAnimationMode;
+  animationTrigger?: string;
   className?: string;
   isAnimated?: boolean;
+  variant?: OutputSlideVariant;
 };
+
+type OutputTextSide = "left" | "right";
+type OutputTextPhase = "incoming" | "outgoing";
 
 const arrowTopPoints = "2 144.06 2 28.12 422.5 28.12 422.5 2 556 86.5 422 171.34 422.5 144.06 2 144.06";
 const panelShapePoints = parsePointValues("2 228 2 2 556 2 556 2 556 143.16 556 228 556 228 2 228");
@@ -20,7 +35,26 @@ const pauseBeforeLiftMs = 100;
 const liftDurationMs = 480;
 const depthFadeMs = 180;
 const outlineFadeMs = 220;
+const replayLowerMs = 80;
+const replayLiftDurationMs = 240;
+const replayPauseBeforeLiftMs = 50;
 const outputAnimationTiming = getOutputAnimationTiming();
+const replayAnimationTiming = getReplayAnimationTiming();
+
+const outputSlideVariants: Record<OutputSlideVariant, { rightUrl: string; leftUrl: string }> = {
+  "engineer-code": {
+    leftUrl: engineerUrl,
+    rightUrl: codeUrl,
+  },
+  "designer-pixels": {
+    leftUrl: designerUrl,
+    rightUrl: pixelsUrl,
+  },
+  "product-docs": {
+    leftUrl: productUrl,
+    rightUrl: docsUrl,
+  },
+};
 
 type OutputAnimationTiming = {
   liftDurationMs: number;
@@ -34,17 +68,61 @@ type OutputAnimationTiming = {
   step2At: number;
 };
 
-export function OutputSlide({ className = "", isAnimated = false }: OutputSlideProps) {
-  const timing = outputAnimationTiming;
-  const progress = useOutputArrowProgress(isAnimated, timing.totalDurationMs);
-  const panelBackgroundOpacity = isAnimated
-    ? easeOutCubic(clamp((progress - timing.liftStartMs) / timing.liftDurationMs))
-    : 0;
-  const liftTransition = {
+type ReplayAnimationTiming = {
+  liftDurationMs: number;
+  liftStartMs: number;
+  lowerDurationMs: number;
+  totalDurationMs: number;
+};
+
+type OutputTextTransitionState = {
+  incoming: OutputSlideVariant;
+  outgoing?: OutputSlideVariant;
+  trigger: string;
+};
+
+export function OutputSlide({
+  animationMode = "intro",
+  animationTrigger = "",
+  className = "",
+  isAnimated = false,
+  variant = "engineer-code",
+}: OutputSlideProps) {
+  const timing = animationMode === "intro" ? outputAnimationTiming : replayAnimationTiming;
+  const progress = useOutputArrowProgress(isAnimated, timing.totalDurationMs, animationTrigger);
+  const [textVariants, setTextVariants] = useState<OutputTextTransitionState>(() => ({
+    incoming: variant,
+    trigger: animationTrigger,
+  }));
+  const textTransition = {
     delay: timing.liftStartMs / 1000,
     duration: timing.liftDurationMs / 1000,
     ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
   };
+  const selectedVariant = outputSlideVariants[textVariants.incoming];
+  const outgoingVariant = textVariants.outgoing ? outputSlideVariants[textVariants.outgoing] : undefined;
+  const textLiftProgress = isAnimated
+    ? easeOutCubic(clamp((progress - timing.liftStartMs) / timing.liftDurationMs))
+    : 1;
+  const panelBackgroundOpacity = animationMode === "replay"
+    ? 1
+    : isAnimated
+      ? easeOutCubic(clamp((progress - timing.liftStartMs) / timing.liftDurationMs))
+      : 0;
+
+  useLayoutEffect(() => {
+    setTextVariants((current) => {
+      if (current.incoming === variant && current.trigger === animationTrigger) {
+        return current;
+      }
+
+      return {
+        incoming: variant,
+        outgoing: animationMode === "replay" && isAnimated ? current.incoming : undefined,
+        trigger: animationTrigger,
+      };
+    });
+  }, [animationMode, animationTrigger, isAnimated, variant]);
 
   return (
     <div className={`output-slide ${isAnimated ? "output-slide--animated" : ""} ${className}`.trim()}>
@@ -53,47 +131,128 @@ export function OutputSlide({ className = "", isAnimated = false }: OutputSlideP
         className="output-slide__panel-background"
         style={{ opacity: panelBackgroundOpacity }}
       />
-      <motion.img
-        alt=""
-        aria-hidden="true"
-        className="output-slide__text output-slide__text--engineer"
-        draggable={false}
-        initial={isAnimated ? { opacity: 0, y: "calc(-50% + 42px)" } : false}
-        animate={{ opacity: 1, y: "-50%" }}
-        transition={isAnimated ? liftTransition : { duration: 0 }}
-        src={engineerUrl}
+      {animationMode === "replay" ? (
+        <>
+          {outgoingVariant ? (
+            <OutputTextImage
+              phase="outgoing"
+              side="left"
+              progress={textLiftProgress}
+              src={outgoingVariant.leftUrl}
+            />
+          ) : null}
+          <OutputTextImage
+            phase="incoming"
+            side="left"
+            progress={textLiftProgress}
+            src={selectedVariant.leftUrl}
+          />
+        </>
+      ) : (
+        <motion.img
+          alt=""
+          aria-hidden="true"
+          className="output-slide__text output-slide__text--engineer"
+          draggable={false}
+          key={selectedVariant.leftUrl}
+          initial={isAnimated ? { opacity: 0, y: "calc(-50% + 42px)" } : false}
+          animate={{ opacity: 1, y: "-50%" }}
+          transition={isAnimated ? textTransition : { duration: 0 }}
+          src={selectedVariant.leftUrl}
+        />
+      )}
+      <AnimatedArrow
+        animationMode={animationMode}
+        isAnimated={isAnimated}
+        progress={progress}
+        timing={outputAnimationTiming}
+        replayTiming={replayAnimationTiming}
       />
-      <AnimatedArrow isAnimated={isAnimated} progress={progress} timing={timing} />
-      <motion.img
-        alt=""
-        aria-hidden="true"
-        className="output-slide__text output-slide__text--code"
-        draggable={false}
-        initial={isAnimated ? { opacity: 0, y: "calc(-50% + 42px)" } : false}
-        animate={{ opacity: 1, y: "-50%" }}
-        transition={isAnimated ? liftTransition : { duration: 0 }}
-        src={codeUrl}
-      />
+      {animationMode === "replay" ? (
+        <>
+          {outgoingVariant ? (
+            <OutputTextImage
+              phase="outgoing"
+              side="right"
+              progress={textLiftProgress}
+              src={outgoingVariant.rightUrl}
+            />
+          ) : null}
+          <OutputTextImage
+            phase="incoming"
+            side="right"
+            progress={textLiftProgress}
+            src={selectedVariant.rightUrl}
+          />
+        </>
+      ) : (
+        <motion.img
+          alt=""
+          aria-hidden="true"
+          className="output-slide__text output-slide__text--code"
+          draggable={false}
+          key={selectedVariant.rightUrl}
+          initial={isAnimated ? { opacity: 0, y: "calc(-50% - 42px)" } : false}
+          animate={{ opacity: 1, y: "-50%" }}
+          transition={isAnimated ? textTransition : { duration: 0 }}
+          src={selectedVariant.rightUrl}
+        />
+      )}
     </div>
   );
 }
 
+function OutputTextImage({
+  phase,
+  progress,
+  side,
+  src,
+}: {
+  phase: OutputTextPhase;
+  progress: number;
+  side: OutputTextSide;
+  src: string;
+}) {
+  return (
+    <img
+      alt=""
+      aria-hidden="true"
+      className={[
+        "output-slide__text",
+        side === "left" ? "output-slide__text--engineer" : "output-slide__text--code",
+      ].join(" ")}
+      draggable={false}
+      src={src}
+      style={getReplayTextStyle(side, phase, progress)}
+    />
+  );
+}
+
 function AnimatedArrow({
+  animationMode,
   isAnimated,
   progress,
+  replayTiming,
   timing,
 }: {
+  animationMode: OutputSlideAnimationMode;
   isAnimated: boolean;
   progress: number;
+  replayTiming: ReplayAnimationTiming;
   timing: OutputAnimationTiming;
 }) {
-  const morphProgress = clamp(progress / timing.morphDurationMs);
+  const isReplay = animationMode === "replay";
+  const morphProgress = isReplay ? 1 : clamp(progress / timing.morphDurationMs);
   const pointKeyframes = getMorphPointKeyframes(timing);
   const scalarKeyframes = getMorphScalarKeyframes(timing);
   const heldMorphProgress = interpolateScalarKeyframes(scalarKeyframes, morphProgress);
   const morphScaleProgress = easeOutQuart(heldMorphProgress);
-  const liftProgress = easeOutCubic(clamp((progress - timing.liftStartMs) / timing.liftDurationMs));
-  const depthProgress = clamp((progress - timing.liftStartMs) / timing.depthFadeMs);
+  const liftProgress = isReplay
+    ? getReplayLiftProgress(progress, replayTiming)
+    : easeOutCubic(clamp((progress - timing.liftStartMs) / timing.liftDurationMs));
+  const depthProgress = isReplay ? 1 : clamp((progress - timing.liftStartMs) / timing.depthFadeMs);
+  const outlineProgress = isReplay ? 1 : clamp((progress - timing.liftStartMs) / timing.outlineFadeMs);
+  const extrusionProgress = liftProgress;
   const textColorProgress = easeOutQuart(heldMorphProgress);
   const arrowStyle = {
     height: `${mix(100, 13, morphScaleProgress)}%`,
@@ -108,14 +267,17 @@ function AnimatedArrow({
     ? mixColor([29, 24, 22], [255, 255, 255], textColorProgress)
     : "#ffffff";
   const topTransform = isAnimated ? `translate(0 ${arrowTopLift * liftProgress})` : undefined;
+  const depthPath = isAnimated
+    ? getArrowDepthPath(extrusionProgress)
+    : getArrowDepthPath(1);
   const outlinePoints = isAnimated
     ? formatPointValues([
-      2, mix(200.72, 144.06, liftProgress),
+      2, mix(200.72, 144.06, extrusionProgress),
       2, 200.72,
       422.5, 200.72,
       422, 228,
       556, 143.16,
-      556, mix(143.16, 86.5, liftProgress),
+      556, mix(143.16, 86.5, extrusionProgress),
     ])
     : "2 144.06 2 200.72 422.5 200.72 422 228 556 143.16 556 86.5";
 
@@ -136,7 +298,7 @@ function AnimatedArrow({
       </defs>
       <path
         className="cls-3 output-slide__arrow-depth"
-        d="M556,86.5v56.66l-134,84.84.5-27.28H2v-56.66h420.5l-.5,27.28,134-84.84h0Z"
+        d={depthPath}
         opacity={isAnimated ? depthProgress : 1}
       />
       <g
@@ -151,28 +313,36 @@ function AnimatedArrow({
       <polyline
         className="cls-1 output-slide__arrow-line"
         points={outlinePoints}
-        opacity={isAnimated ? clamp((progress - timing.liftStartMs) / timing.outlineFadeMs) : 1}
+        opacity={isAnimated ? outlineProgress : 1}
       />
     </svg>
   );
 }
 
-function useOutputArrowProgress(isAnimated: boolean, totalDurationMs: number) {
-  const [progress, setProgress] = useState(() => isAnimated ? 0 : totalDurationMs);
+function useOutputArrowProgress(isAnimated: boolean, totalDurationMs: number, animationTrigger: string) {
+  const [progressState, setProgressState] = useState(() => ({
+    progress: isAnimated ? 0 : totalDurationMs,
+    trigger: animationTrigger,
+  }));
+  const progress = progressState.trigger === animationTrigger
+    ? progressState.progress
+    : isAnimated
+      ? 0
+      : totalDurationMs;
 
   useEffect(() => {
     if (!isAnimated) {
-      setProgress(totalDurationMs);
+      setProgressState({ progress: totalDurationMs, trigger: animationTrigger });
       return undefined;
     }
 
     let frame = 0;
     const start = performance.now();
-    setProgress(0);
+    setProgressState({ progress: 0, trigger: animationTrigger });
 
     const tick = (now: number) => {
       const nextProgress = Math.min(now - start, totalDurationMs);
-      setProgress(nextProgress);
+      setProgressState({ progress: nextProgress, trigger: animationTrigger });
 
       if (nextProgress < totalDurationMs) {
         frame = requestAnimationFrame(tick);
@@ -184,7 +354,7 @@ function useOutputArrowProgress(isAnimated: boolean, totalDurationMs: number) {
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [isAnimated, totalDurationMs]);
+  }, [animationTrigger, isAnimated, totalDurationMs]);
 
   return progress;
 }
@@ -206,6 +376,47 @@ function getOutputAnimationTiming(): OutputAnimationTiming {
   };
 }
 
+function getReplayAnimationTiming(): ReplayAnimationTiming {
+  const liftStartMs = replayLowerMs + replayPauseBeforeLiftMs;
+
+  return {
+    liftDurationMs: replayLiftDurationMs,
+    liftStartMs,
+    lowerDurationMs: replayLowerMs,
+    totalDurationMs: liftStartMs + liftDurationMs,
+  };
+}
+
+function getReplayLiftProgress(progress: number, timing: ReplayAnimationTiming) {
+  if (progress < timing.lowerDurationMs) {
+    return 1 - easeOutCubic(clamp(progress / timing.lowerDurationMs));
+  }
+
+  if (progress < timing.liftStartMs) {
+    return 0;
+  }
+
+  return easeOutCubic(clamp((progress - timing.liftStartMs) / timing.liftDurationMs));
+}
+
+function getArrowDepthPath(progress: number) {
+  const leftConnectorY = mix(200.72, 144.06, progress);
+  const headConnectorY = mix(228, 171.34, progress);
+
+  return [
+    "M556,86.5",
+    "V143.16",
+    "L422,228",
+    "L422.5,200.72",
+    "H2",
+    `V${formatPointValue(leftConnectorY)}`,
+    `H422.5`,
+    `L422,${formatPointValue(headConnectorY)}`,
+    "L556,86.5",
+    "Z",
+  ].join(" ");
+}
+
 function getMorphPointKeyframes(timing: OutputAnimationTiming) {
   return [
     { at: 0, values: panelShapePoints },
@@ -224,6 +435,20 @@ function getMorphScalarKeyframes(timing: OutputAnimationTiming) {
     { at: timing.step2At, value: 1 },
     { at: 1, value: 1 },
   ];
+}
+
+function getReplayTextStyle(side: OutputTextSide, phase: OutputTextPhase, progress: number): CSSProperties {
+  const clampedProgress = clamp(progress);
+  const direction = side === "left" ? -1 : 1;
+  const offset = phase === "incoming"
+    ? direction * -42 * (1 - clampedProgress)
+    : direction * 42 * clampedProgress;
+  const opacity = phase === "incoming" ? clampedProgress : 1 - clampedProgress;
+
+  return {
+    opacity,
+    transform: `translateY(calc(-50% + ${formatPixelOffset(offset)}px))`,
+  };
 }
 
 function parsePointValues(points: string) {
@@ -289,7 +514,17 @@ function interpolateValues(from: number[], to: number[], progress: number) {
 }
 
 function formatPointValues(values: number[]) {
-  return values.map((value) => Number.isInteger(value) ? `${value}` : value.toFixed(2)).join(" ");
+  return values.map(formatPointValue).join(" ");
+}
+
+function formatPointValue(value: number) {
+  return Number.isInteger(value) ? `${value}` : value.toFixed(2);
+}
+
+function formatPixelOffset(value: number) {
+  const rounded = Math.abs(value) < 0.001 ? 0 : value;
+
+  return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(2);
 }
 
 function mix(from: number, to: number, progress: number) {

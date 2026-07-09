@@ -204,6 +204,35 @@ body {
   right: calc(var(--output-grid-column-width) + var(--slide-grid-gutter));
 }
 
+.manufacturing-slide {
+  isolation: isolate;
+  overflow: hidden;
+  position: relative;
+}
+
+.manufacturing-slide__arrow-ghost {
+  display: block;
+  height: 13%;
+  left: 41.5%;
+  overflow: visible;
+  position: absolute;
+  top: 51.22%;
+  transform-origin: center;
+  width: 17%;
+  z-index: 2;
+}
+
+.manufacturing-slide__timeline {
+  display: block;
+  height: 52%;
+  left: 15.532%;
+  overflow: visible;
+  position: absolute;
+  top: 32.85%;
+  width: 68.937%;
+  z-index: 3;
+}
+
 .title-slide-footer {
   align-items: center;
   bottom: var(--slide-grid-row-margin);

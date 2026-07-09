@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import type { Transition, Variants } from "motion/react";
 import { TitleSlide } from "../slides/00-title";
 import { OutputSlide } from "../slides/02-output";
+import { ManufacturingSlide } from "../slides/03-manufacturing";
 import howYouUrl from "../slides/01-think/how-you.svg";
 import mustChangeUrl from "../slides/01-think/must-change.svg";
 import thinkGraffitiUrl from "../slides/01-think/think-graffiti.svg";
@@ -17,7 +18,9 @@ type MotionStageProps = {
 
 export function MotionStage({ direction, frame, isGridVisible }: MotionStageProps) {
   const isCoverFrame = frame.kind === "cover";
-  const isOutputFrame = frame.kind === "contained-light";
+  const isLightFrame = frame.kind === "contained-light";
+  const isOutputFrame = frame.outputVariant != null;
+  const isManufacturingFrame = frame.id === "manufacturing";
 
   return (
     <section
@@ -25,7 +28,7 @@ export function MotionStage({ direction, frame, isGridVisible }: MotionStageProp
         "motion-deck-stage",
         "slide-frame",
         "text-light-t0",
-        isOutputFrame ? "slide-frame--contained-light" : "bg-light-s0",
+        isLightFrame ? "slide-frame--contained-light" : "bg-light-s0",
       ].join(" ")}
       data-frame-id={frame.id}
     >
@@ -34,11 +37,11 @@ export function MotionStage({ direction, frame, isGridVisible }: MotionStageProp
           "slide-panel",
           isCoverFrame
             ? "slide-panel--cover"
-            : isOutputFrame
+            : isLightFrame
               ? "slide-panel--contained-light"
               : "slide-panel--contained",
           "motion-deck-panel",
-          isOutputFrame && direction > 0 ? "motion-deck-panel--output-enter" : "",
+          isLightFrame && direction > 0 ? "motion-deck-panel--output-enter" : "",
         ].join(" ")}
         layout
         transition={frame.transition}
@@ -46,7 +49,18 @@ export function MotionStage({ direction, frame, isGridVisible }: MotionStageProp
         {isCoverFrame ? (
           <TitleSlide className="slide-content" />
         ) : isOutputFrame ? (
-          <OutputSlide className="slide-content" isAnimated={direction > 0} />
+          <OutputSlide
+            animationMode={frame.id === "output" ? "intro" : "replay"}
+            animationTrigger={frame.id}
+            className="slide-content"
+            isAnimated={direction > 0}
+            variant={frame.outputVariant}
+          />
+        ) : isManufacturingFrame ? (
+          <ManufacturingSlide
+            className="slide-content"
+            isAnimated={direction > 0}
+          />
         ) : (
           <MotionThinkContent />
         )}
@@ -124,7 +138,7 @@ const thinkItemVariants: Record<"how" | "center" | "must", Variants> = {
     show: {
       opacity: 1,
       scale: 1,
-      transition: { ...itemTransition, delay: 0.2, duration: 0.3 },
+      transition: { ...itemTransition, duration: 0.3 },
     },
   },
   must: {
