@@ -13,7 +13,8 @@ const lineStartX = 36;
 const lineEndX = 2457;
 const lineCenterX = (lineStartX + lineEndX) / 2;
 const lineStartHalfWidth = 210;
-const arrowCollapseDelay = 0.06;
+const arrowFlattenDuration = 0.28;
+const arrowCollapseDelay = arrowFlattenDuration;
 const arrowCollapseDuration = 0.42;
 const lineExtendDelay = arrowCollapseDelay + arrowCollapseDuration;
 const lineExtendDuration = 0.44;
@@ -23,34 +24,53 @@ const riserDelay = endpointsDelay + 0.22;
 const lightRiserDelay = riserDelay + 0.04;
 const labelsDelay = riserDelay + 0.32;
 const arrowCollapseY = 179.76;
-const arrowDepthPath = "M556,86.5V143.16L422,228L422.5,200.72H2V144.06H422.5L422,171.34L556,86.5Z";
+const arrowDepthPoints = parsePointValues("556 86.5 556 143.16 422 228 422.5 200.72 2 200.72 2 144.06 422.5 144.06 422 171.34");
 const arrowTopPoints = parsePointValues("2 144.06 2 28.12 422.5 28.12 422.5 2 556 86.5 422 171.34 422.5 144.06 2 144.06");
 const arrowLinePoints = parsePointValues("2 144.06 2 200.72 422.5 200.72 422 228 556 143.16 556 86.5");
-const collapsedArrowTopPoints = collapsePointValuesToY(arrowTopPoints, arrowCollapseY);
-const collapsedArrowLinePoints = collapsePointValuesToY(arrowLinePoints, arrowCollapseY);
+const flattenedArrowDepthPoints = parsePointValues("556 143.16 556 143.16 422 228 422.5 200.72 2 200.72 2 200.72 422.5 200.72 422 228");
+const flattenedArrowTopPoints = parsePointValues("2 200.72 2 84.78 422.5 84.78 422.5 58.66 556 143.16 422 228 422.5 200.72 2 200.72");
+const flattenedArrowLinePoints = parsePointValues("2 200.72 2 200.72 422.5 200.72 422 228 556 143.16 556 143.16");
+const collapsedArrowTopPoints = collapsePointValuesToY(flattenedArrowTopPoints, arrowCollapseY);
 
 export function ManufacturingSlide({
   className = "",
   isAnimated = false,
 }: ManufacturingSlideProps) {
   const immediate = { duration: 0 };
+  const arrowFlattenProgress = useDelayedProgress(
+    isAnimated,
+    0,
+    arrowFlattenDuration * 1000,
+  );
   const arrowCollapseProgress = useDelayedProgress(
     isAnimated,
     arrowCollapseDelay * 1000,
     arrowCollapseDuration * 1000,
   );
   const [isTimelineVisible, setIsTimelineVisible] = useState(() => !isAnimated);
+  const easedArrowFlattenProgress = easeOutCubic(arrowFlattenProgress);
   const easedArrowCollapseProgress = easeOutCubic(arrowCollapseProgress);
-  const topPoints = formatPointValues(interpolateValues(
+  const flattenedTopPoints = interpolateValues(
     arrowTopPoints,
+    flattenedArrowTopPoints,
+    easedArrowFlattenProgress,
+  );
+  const topPoints = formatPointValues(interpolateValues(
+    flattenedTopPoints,
     collapsedArrowTopPoints,
     easedArrowCollapseProgress,
   ));
-  const linePoints = formatPointValues(interpolateValues(
-    arrowLinePoints,
-    collapsedArrowLinePoints,
-    easedArrowCollapseProgress,
+  const depthPoints = formatPointValues(interpolateValues(
+    arrowDepthPoints,
+    flattenedArrowDepthPoints,
+    easedArrowFlattenProgress,
   ));
+  const extrusionLinePoints = formatPointValues(interpolateValues(
+    arrowLinePoints,
+    flattenedArrowLinePoints,
+    easedArrowFlattenProgress,
+  ));
+  const shouldRenderExtrusion = arrowFlattenProgress < 1;
 
   useEffect(() => {
     if (!isAnimated) {
@@ -89,13 +109,12 @@ export function ManufacturingSlide({
               <stop offset=".77" stopColor="#f3f1f1" />
             </linearGradient>
           </defs>
-          <motion.path
-            animate={{ fillOpacity: 0 }}
-            d={arrowDepthPath}
-            fill="url(#manufacturing-arrow-gradient)"
-            initial={isAnimated ? { fillOpacity: 1 } : { fillOpacity: 0 }}
-            transition={immediate}
-          />
+          {shouldRenderExtrusion ? (
+            <polygon
+              fill="url(#manufacturing-arrow-gradient)"
+              points={depthPoints}
+            />
+          ) : null}
           <motion.polygon
             animate={{ fillOpacity: 0 }}
             fill="#ffffff"
@@ -106,13 +125,15 @@ export function ManufacturingSlide({
             strokeWidth="4"
             transition={immediate}
           />
-          <polyline
-            fill="none"
-            points={linePoints}
-            stroke="#372e2a"
-            strokeLinejoin="round"
-            strokeWidth="4"
-          />
+          {shouldRenderExtrusion ? (
+            <polyline
+              fill="none"
+              points={extrusionLinePoints}
+              stroke="#372e2a"
+              strokeLinejoin="round"
+              strokeWidth="4"
+            />
+          ) : null}
         </motion.svg>
       ) : null}
       <svg
