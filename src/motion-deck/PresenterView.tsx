@@ -20,8 +20,10 @@ import {
 import type { WritableNotesFileHandle } from "./speaker-notes-files";
 import { motionDeckFrames } from "./frames";
 import { MotionStage } from "./MotionStage";
+import type { AudienceConnectionStatus } from "./presentation-sync";
 
 type PresenterViewProps = {
+  audienceStatus: AudienceConnectionStatus;
   direction: number;
   frameIndex: number;
   isGridVisible: boolean;
@@ -31,6 +33,7 @@ type PresenterViewProps = {
 };
 
 export function PresenterView({
+  audienceStatus,
   direction,
   frameIndex,
   isGridVisible,
@@ -52,6 +55,7 @@ export function PresenterView({
   const currentNote = selectSessionNote(notesSession, frame.id);
   const isEditing = editingFrameId === frame.id;
   const hasPersistentFileSupport = supportsPersistentNotesFiles();
+  const audienceStatusContent = getAudienceStatusContent(audienceStatus);
 
   const confirmDiscardUnsavedNotes = useCallback(() => (
     !notesSession.isDirty || window.confirm(
@@ -201,8 +205,18 @@ export function PresenterView({
         <div className="presenter-view-header__status">
           <div className="presenter-view-header__presentation-actions">
             <span>{frameIndex + 1} / {motionDeckFrames.length}</span>
-            <button onClick={onOpenAudience} type="button">Open audience display</button>
+            <button onClick={onOpenAudience} type="button">
+              {audienceStatusContent.action}
+            </button>
           </div>
+          <span
+            aria-live="polite"
+            className="presenter-audience-status"
+            data-status={audienceStatus}
+          >
+            <strong>{audienceStatusContent.label}</strong>
+            <span>{audienceStatusContent.detail}</span>
+          </span>
           <span
             aria-live="polite"
             className="presenter-notes-status"
@@ -369,4 +383,39 @@ export function PresenterView({
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Speaker notes could not be saved.";
+}
+
+function getAudienceStatusContent(status: AudienceConnectionStatus) {
+  switch (status) {
+    case "opening":
+      return {
+        action: "Open again",
+        detail: "Waiting for the audience window to check in.",
+        label: "Audience display opening",
+      };
+    case "connected":
+      return {
+        action: "Refresh audience display",
+        detail: "Following the current presenter frame.",
+        label: "Audience display connected",
+      };
+    case "disconnected":
+      return {
+        action: "Reconnect audience display",
+        detail: "No recent response. Reopen it to restore the current frame.",
+        label: "Audience display disconnected",
+      };
+    case "popup-blocked":
+      return {
+        action: "Try opening again",
+        detail: "Allow pop-ups for this page, then try again.",
+        label: "Audience display blocked",
+      };
+    case "closed":
+      return {
+        action: "Open audience display",
+        detail: "Open or reopen a second display when ready.",
+        label: "Audience display closed",
+      };
+  }
 }

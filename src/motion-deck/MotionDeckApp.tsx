@@ -4,12 +4,9 @@ import { motionDeckFrames } from "./frames";
 import { MotionStage } from "./MotionStage";
 import { PresenterView } from "./PresenterView";
 import {
-  createAudienceDisplayUrl,
-  createPresentationFrameMessage,
   getDeckViewMode,
-  parsePresentationFrameMessage,
-  presentationChannelName,
 } from "./presentation-sync";
+import { usePresentationSession } from "./usePresentationSession";
 import {
   createFrameHash,
   getFrameIndexFromHash,
@@ -28,7 +25,6 @@ export function MotionDeckApp() {
   ));
   const [isGridVisible, setIsGridVisible] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | undefined>(undefined);
-  const syncChannelRef = useRef<BroadcastChannel | undefined>(undefined);
   const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[0];
   const viewMode = getDeckViewMode(window.location.search);
   const isPresenterView = viewMode === "presenter";
@@ -47,81 +43,29 @@ export function MotionDeckApp() {
     });
   }, []);
 
+  const applyAudienceState = useCallback((message: {
+    direction: -1 | 1;
+    frameIndex: number;
+  }) => {
+    writeFrameHash(message.frameIndex, "replace");
+    setNavigation({
+      direction: message.direction,
+      frameIndex: message.frameIndex,
+    });
+  }, []);
+
+  const { audienceStatus, openAudienceDisplay } = usePresentationSession({
+    direction,
+    frameCount,
+    frameIndex,
+    onAudienceState: applyAudienceState,
+    viewMode,
+  });
+
   const controls = useMemo(() => ({
     goNext: () => goToFrame(frameIndex + 1),
     goPrevious: () => goToFrame(frameIndex - 1),
   }), [frameIndex, goToFrame]);
-
-  const openAudienceDisplay = useCallback(() => {
-    const audienceUrl = createAudienceDisplayUrl(
-      window.location.href,
-      frameIndex,
-      frameCount,
-    );
-
-    window.open(
-      audienceUrl,
-      "patterns-for-creativity-audience",
-      "popup=yes,width=1280,height=720",
-    );
-  }, [frameIndex]);
-
-  useEffect(() => {
-    if (viewMode === "deck" || typeof BroadcastChannel === "undefined") {
-      return undefined;
-    }
-
-    const channel = new BroadcastChannel(presentationChannelName);
-    syncChannelRef.current = channel;
-
-    if (viewMode === "audience") {
-      const handlePresentationMessage = (event: MessageEvent<unknown>) => {
-        const message = parsePresentationFrameMessage(event.data, frameCount);
-
-        if (!message) {
-          return;
-        }
-
-        setNavigation((currentState) => {
-          if (
-            currentState.frameIndex === message.frameIndex &&
-            currentState.direction === message.direction
-          ) {
-            return currentState;
-          }
-
-          writeFrameHash(message.frameIndex, "replace");
-          return {
-            direction: message.direction,
-            frameIndex: message.frameIndex,
-          };
-        });
-      };
-
-      channel.addEventListener("message", handlePresentationMessage);
-
-      return () => {
-        channel.removeEventListener("message", handlePresentationMessage);
-        channel.close();
-        syncChannelRef.current = undefined;
-      };
-    }
-
-    return () => {
-      channel.close();
-      syncChannelRef.current = undefined;
-    };
-  }, [viewMode]);
-
-  useEffect(() => {
-    if (viewMode !== "presenter") {
-      return;
-    }
-
-    syncChannelRef.current?.postMessage(
-      createPresentationFrameMessage(frameIndex, direction),
-    );
-  }, [direction, frameIndex, viewMode]);
 
   useEffect(() => {
     if (!window.location.hash) {
@@ -219,6 +163,7 @@ export function MotionDeckApp() {
     <MotionConfig transition={{ type: "spring", stiffness: 120, damping: 20, mass: 0.95 }}>
       {isPresenterView ? (
         <PresenterView
+          audienceStatus={audienceStatus}
           direction={direction}
           frameIndex={frameIndex}
           isGridVisible={isGridVisible}

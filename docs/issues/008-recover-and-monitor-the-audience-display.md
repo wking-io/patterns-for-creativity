@@ -1,7 +1,7 @@
 # Recover And Monitor The Audience Display
 
 Type: AFK
-Status: ready-for-agent
+Status: Done
 
 ## What to build
 
@@ -11,15 +11,15 @@ An audience display that opens late or reloads should request and receive the la
 
 ## Acceptance criteria
 
-- [ ] Presenter View distinguishes opening, connected, disconnected, closed, and popup-blocked audience-display states.
-- [ ] A late-opening or reloaded audience display joins at the presenter's current frame rather than relying on an earlier cached frame.
-- [ ] Closing the audience display updates Presenter View without changing the current frame or unsaved notes.
-- [ ] Reopening an audience display creates a fresh connection and restores the latest presentation state.
-- [ ] Stale or duplicated synchronization messages cannot rewind the deck or cause navigation loops.
-- [ ] Popup blocking produces actionable recovery guidance and does not discard presenter state.
-- [ ] The synchronized presenter and audience workflow works from the generated offline presentation artifact without a remote service.
-- [ ] Focused tests cover joining, reconnection, stale-message rejection, duplicate-message handling, and display closure.
-- [ ] `pnpm check`, `pnpm test`, and `pnpm build` pass.
+- [x] Presenter View distinguishes opening, connected, disconnected, closed, and popup-blocked audience-display states.
+- [x] A late-opening or reloaded audience display joins at the presenter's current frame rather than relying on an earlier cached frame.
+- [x] Closing the audience display updates Presenter View without changing the current frame or unsaved notes.
+- [x] Reopening an audience display creates a fresh connection and restores the latest presentation state.
+- [x] Stale or duplicated synchronization messages cannot rewind the deck or cause navigation loops.
+- [x] Popup blocking produces actionable recovery guidance and does not discard presenter state.
+- [x] The synchronized presenter and audience workflow works from the generated offline presentation artifact without a remote service.
+- [x] Focused tests cover joining, reconnection, stale-message rejection, duplicate-message handling, and display closure.
+- [x] `pnpm check`, `pnpm test`, and `pnpm build` pass.
 
 ## Blocked by
 
