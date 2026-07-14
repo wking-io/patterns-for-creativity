@@ -86,13 +86,18 @@
 }
 
 .presenter-view-header {
-  align-items: flex-end;
+  align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 24px;
   justify-content: space-between;
   margin: 0 auto 16px;
   max-width: 1800px;
   width: 100%;
+}
+
+.presenter-view-header__title {
+  flex: 1 1 150px;
 }
 
 .presenter-view-header h1 {
@@ -117,6 +122,59 @@
   font-variant-numeric: tabular-nums;
   gap: 5px;
   text-align: right;
+}
+
+.presenter-timing {
+  align-items: center;
+  background: #1c1a18;
+  border: 1px solid #383431;
+  border-radius: 10px;
+  display: flex;
+  flex: 0 1 auto;
+  gap: 14px;
+  padding: 8px 10px;
+}
+
+.presenter-time-readout {
+  display: flex;
+  flex-direction: column;
+  font-variant-numeric: tabular-nums;
+  gap: 2px;
+  min-width: 92px;
+}
+
+.presenter-time-readout span {
+  color: #8f8883;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.presenter-time-readout time,
+.presenter-time-readout output {
+  color: #f3f1f1;
+  font-size: 1rem;
+  font-weight: 750;
+  line-height: 1.1;
+}
+
+.presenter-time-readout[data-timer-status="running"] output {
+  color: #a8d99a;
+}
+
+.presenter-time-readout[data-timer-status="paused"] output {
+  color: #ffd5ab;
+}
+
+.presenter-timer-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.presenter-view-root .presenter-timer-actions button {
+  min-height: 30px;
+  padding: 5px 9px;
 }
 
 .presenter-view-header__presentation-actions {
@@ -410,13 +468,14 @@
 }
 
 .presenter-note-cue p {
+  font-size: calc(var(--presenter-notes-text-size, 20px) * 0.85);
   font-weight: 700;
   line-height: 1.4;
   margin: 0;
 }
 
 .presenter-note-body {
-  font-size: clamp(1.05rem, 1.45vw, 1.35rem);
+  font-size: var(--presenter-notes-text-size, 20px);
   line-height: 1.55;
   white-space: pre-wrap;
 }
@@ -469,6 +528,7 @@
 
 .presenter-notes-editor textarea {
   flex: 1;
+  font-size: var(--presenter-notes-text-size, 20px);
   min-height: 220px;
 }
 
@@ -477,6 +537,7 @@
 }
 
 .presenter-notes-panel__footer {
+  align-items: center;
   border-top: 1px solid #d4cfcb;
   color: #786f69;
   display: flex;
@@ -485,6 +546,27 @@
   gap: 10px;
   justify-content: space-between;
   padding: 10px 16px;
+}
+
+.presenter-notes-text-size,
+.presenter-notes-panel__footer-meta {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.presenter-view-root .presenter-notes-text-size button {
+  font-size: 0.72rem;
+  min-height: 27px;
+  padding: 3px 7px;
+}
+
+.presenter-notes-text-size output {
+  color: #403934;
+  font-variant-numeric: tabular-nums;
+  min-width: 32px;
+  text-align: center;
 }
 
 .presenter-notes-panel__footer code {
@@ -498,7 +580,9 @@
 
   .presenter-view-workspace {
     display: flex;
+    flex: none;
     flex-direction: column;
+    min-height: auto;
   }
 
   .presenter-preview-card--current {
@@ -517,6 +601,11 @@
   .presenter-notes-panel {
     min-height: 500px;
   }
+
+  .presenter-timing {
+    order: 3;
+    width: 100%;
+  }
 }
 
 @media (max-width: 640px) {
@@ -534,6 +623,23 @@
   .presenter-view-header__status {
     align-items: flex-start;
     text-align: left;
+  }
+
+  .presenter-timing {
+    align-items: stretch;
+    flex-wrap: wrap;
+  }
+
+  .presenter-time-readout {
+    flex: 1 1 110px;
+  }
+
+  .presenter-timer-actions {
+    flex: 1 1 100%;
+  }
+
+  .presenter-timer-actions button {
+    flex: 1;
   }
 
   .presenter-audience-status {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { SpeakerNote } from "./speaker-notes";
 import {
   createEmptySpeakerNotesFile,
@@ -21,6 +22,17 @@ import type { WritableNotesFileHandle } from "./speaker-notes-files";
 import { motionDeckFrames } from "./frames";
 import { MotionStage } from "./MotionStage";
 import type { AudienceConnectionStatus } from "./presentation-sync";
+import {
+  createElapsedTimerState,
+  defaultNotesTextSize,
+  elapsedTimerReducer,
+  formatElapsedTime,
+  getElapsedMilliseconds,
+  notesTextSizeOptions,
+  readNotesTextSize,
+  updateNotesTextSize,
+  writeNotesTextSize,
+} from "./presenter-controls";
 
 type PresenterViewProps = {
   audienceStatus: AudienceConnectionStatus;
@@ -49,6 +61,15 @@ export function PresenterView({
   const [editingFrameId, setEditingFrameId] = useState<string>();
   const [editStartNote, setEditStartNote] = useState<SpeakerNote>();
   const [hasWritableHandle, setHasWritableHandle] = useState(false);
+  const [timer, dispatchTimer] = useReducer(
+    elapsedTimerReducer,
+    undefined,
+    createElapsedTimerState,
+  );
+  const [now, setNow] = useState(() => Date.now());
+  const [notesTextSize, setNotesTextSize] = useState(() => (
+    readNotesTextSize(getPresenterPreferenceStorage())
+  ));
   const fileHandleRef = useRef<WritableNotesFileHandle | undefined>(undefined);
   const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[0];
   const nextFrame = motionDeckFrames[frameIndex + 1];
@@ -56,6 +77,12 @@ export function PresenterView({
   const isEditing = editingFrameId === frame.id;
   const hasPersistentFileSupport = supportsPersistentNotesFiles();
   const audienceStatusContent = getAudienceStatusContent(audienceStatus);
+  const elapsedTime = formatElapsedTime(getElapsedMilliseconds(timer, now));
+  const timerAction = timer.status === "idle"
+    ? "Start"
+    : timer.status === "running"
+      ? "Pause"
+      : "Resume";
 
   const confirmDiscardUnsavedNotes = useCallback(() => (
     !notesSession.isDirty || window.confirm(
@@ -163,6 +190,15 @@ export function PresenterView({
   };
 
   useEffect(() => {
+    const clockTimer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(clockTimer);
+  }, []);
+
+  useEffect(() => {
+    writeNotesTextSize(getPresenterPreferenceStorage(), notesTextSize);
+  }, [notesTextSize]);
+
+  useEffect(() => {
     setEditingFrameId(undefined);
     setEditStartNote(undefined);
   }, [frame.id]);
@@ -195,13 +231,54 @@ export function PresenterView({
     return () => window.removeEventListener("keydown", handleSaveShortcut);
   }, [handleSave]);
 
+  const handleTimerAction = () => {
+    const at = Date.now();
+
+    if (timer.status === "idle") {
+      dispatchTimer({ type: "start", at });
+    } else if (timer.status === "running") {
+      dispatchTimer({ type: "pause", at });
+    } else {
+      dispatchTimer({ type: "resume", at });
+    }
+
+    setNow(at);
+  };
+
+  const changeNotesTextSize = (action: "increase" | "decrease" | "reset") => {
+    setNotesTextSize((currentSize) => updateNotesTextSize(currentSize, action));
+  };
+
   return (
     <main className="presenter-view-root">
       <header className="presenter-view-header">
-        <div>
+        <div className="presenter-view-header__title">
           <p className="presenter-view-eyebrow">Presenter View</p>
           <h1>{frame.label}</h1>
         </div>
+        <section aria-label="Presentation timing" className="presenter-timing">
+          <div className="presenter-time-readout">
+            <span>Local time</span>
+            <time dateTime={new Date(now).toISOString()}>{formatLocalTime(now)}</time>
+          </div>
+          <div className="presenter-time-readout" data-timer-status={timer.status}>
+            <span>Elapsed</span>
+            <output>{elapsedTime}</output>
+          </div>
+          <div className="presenter-timer-actions">
+            <button onClick={handleTimerAction} type="button">{timerAction}</button>
+            <button
+              disabled={timer.status === "idle"}
+              onClick={() => {
+                dispatchTimer({ type: "reset" });
+                setNow(Date.now());
+              }}
+              type="button"
+            >
+              Reset
+            </button>
+          </div>
+        </section>
         <div className="presenter-view-header__status">
           <div className="presenter-view-header__presentation-actions">
             <span>{frameIndex + 1} / {motionDeckFrames.length}</span>
@@ -281,7 +358,11 @@ export function PresenterView({
           </div>
         </section>
 
-        <section aria-label="Speaker notes" className="presenter-notes-panel">
+        <section
+          aria-label="Speaker notes"
+          className="presenter-notes-panel"
+          style={{ "--presenter-notes-text-size": `${notesTextSize}px` } as CSSProperties}
+        >
           <div className="presenter-notes-panel__toolbar">
             <div>
               <p className="presenter-view-eyebrow">Speaker notes</p>
@@ -372,8 +453,36 @@ export function PresenterView({
           )}
 
           <div className="presenter-notes-panel__footer">
-            <span>⌘/Ctrl+S saves</span>
-            <span>Notes are keyed to <code>{frame.id}</code></span>
+            <div aria-label="Notes text size" className="presenter-notes-text-size" role="group">
+              <button
+                aria-label="Decrease notes text size"
+                disabled={notesTextSize === notesTextSizeOptions[0]}
+                onClick={() => changeNotesTextSize("decrease")}
+                type="button"
+              >
+                A−
+              </button>
+              <output aria-live="polite">{notesTextSize}px</output>
+              <button
+                aria-label="Increase notes text size"
+                disabled={notesTextSize === notesTextSizeOptions.at(-1)}
+                onClick={() => changeNotesTextSize("increase")}
+                type="button"
+              >
+                A+
+              </button>
+              <button
+                disabled={notesTextSize === defaultNotesTextSize}
+                onClick={() => changeNotesTextSize("reset")}
+                type="button"
+              >
+                Default
+              </button>
+            </div>
+            <div className="presenter-notes-panel__footer-meta">
+              <span>⌘/Ctrl+S saves</span>
+              <span>Notes keyed to <code>{frame.id}</code></span>
+            </div>
           </div>
         </section>
       </div>
@@ -383,6 +492,22 @@ export function PresenterView({
 
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Speaker notes could not be saved.";
+}
+
+function formatLocalTime(timestamp: number) {
+  return new Intl.DateTimeFormat(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(timestamp);
+}
+
+function getPresenterPreferenceStorage() {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
 }
 
 function getAudienceStatusContent(status: AudienceConnectionStatus) {
