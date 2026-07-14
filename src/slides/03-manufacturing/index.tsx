@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { motion } from "motion/react";
 import finishUrl from "./finish.svg";
 import startUrl from "./start.svg";
 
 type ManufacturingSlideProps = {
+  children?: ReactNode;
   className?: string;
   isAnimated?: boolean;
 };
@@ -33,6 +35,7 @@ const flattenedArrowLinePoints = parsePointValues("2 200.72 2 200.72 422.5 200.7
 const collapsedArrowTopPoints = collapsePointValuesToY(flattenedArrowTopPoints, arrowCollapseY);
 
 export function ManufacturingSlide({
+  children,
   className = "",
   isAnimated = false,
 }: ManufacturingSlideProps) {
@@ -248,6 +251,7 @@ export function ManufacturingSlide({
           transition={isAnimated ? { delay: labelsDelay, duration: 0.3, ease: easeOut } : immediate}
         />
       </svg>
+      {children}
     </div >
   );
 }

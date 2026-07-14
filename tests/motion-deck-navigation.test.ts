@@ -9,23 +9,23 @@ import {
   resolveFrameNavigation,
 } from "../src/motion-deck/navigation.js";
 
-const frameCount = 6;
+const frameCount = 15;
 
 assert.equal(clampFrameIndex(Number.NaN, frameCount), 0);
 assert.equal(clampFrameIndex(-1, frameCount), 0);
-assert.equal(clampFrameIndex(99, frameCount), 5);
+assert.equal(clampFrameIndex(99, frameCount), 14);
 assert.equal(clampFrameIndex(1, frameCount), 1);
 
 assert.equal(getFrameIndexFromHash("", frameCount), 0);
 assert.equal(getFrameIndexFromHash("#/2", frameCount), 1);
 assert.equal(getFrameIndexFromHash("#2", frameCount), 1);
 assert.equal(getFrameIndexFromHash("#/motion-deck/3", frameCount), 2);
-assert.equal(getFrameIndexFromHash("#/motion-deck/99", frameCount), 5);
+assert.equal(getFrameIndexFromHash("#/motion-deck/99", frameCount), 14);
 assert.equal(getFrameIndexFromHash("#/other/2", frameCount), 0);
 
 assert.deepEqual(getInitialDeckNavigationState("#/2", frameCount), { direction: 1, frameIndex: 1 });
 assert.equal(createFrameHash(1, frameCount), "#/2");
-assert.equal(createFrameHash(99, frameCount), "#/6");
+assert.equal(createFrameHash(99, frameCount), "#/15");
 
 assert.deepEqual(
   resolveFrameNavigation({ direction: 1, frameIndex: 0 }, 2, frameCount),

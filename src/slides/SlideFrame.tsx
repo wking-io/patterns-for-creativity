@@ -1,6 +1,14 @@
 import filterTextureUrl from "../../filter.png";
 
-export type SlideKind = "cover" | "contained-dark" | "contained-light" | "contained-gradient" | "collage";
+export type SlideKind =
+  | "cover"
+  | "contained-dark"
+  | "contained-light"
+  | "contained-gradient"
+  | "constrained-gradient"
+  | "full-dark"
+  | "full-gradient"
+  | "collage";
 
 export function TitleSlideFooter() {
   return (

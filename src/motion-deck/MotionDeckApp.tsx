@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
 import { motionDeckFrames } from "./frames";
 import { MotionStage } from "./MotionStage";
+import { PresenterView } from "./PresenterView";
 import {
   createFrameHash,
   getFrameIndexFromHash,
@@ -21,6 +22,7 @@ export function MotionDeckApp() {
   const [isGridVisible, setIsGridVisible] = useState(false);
   const touchStartRef = useRef<{ x: number; y: number } | undefined>(undefined);
   const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[0];
+  const isPresenterView = new URLSearchParams(window.location.search).get("view") === "presenter";
 
   const goToFrame = useCallback((nextIndex: number) => {
     setNavigation((currentState) => {
@@ -130,15 +132,30 @@ export function MotionDeckApp() {
 
   return (
     <MotionConfig transition={{ type: "spring", stiffness: 120, damping: 20, mass: 0.95 }}>
-      <main
-        className="motion-deck-root"
-        onTouchEnd={handleTouchEnd}
-        onTouchStart={handleTouchStart}
-      >
-        <div className="motion-deck-viewport">
-          <MotionStage direction={direction} frame={frame} isGridVisible={isGridVisible} />
-        </div>
-      </main>
+      {isPresenterView ? (
+        <PresenterView
+          direction={direction}
+          frameIndex={frameIndex}
+          isGridVisible={isGridVisible}
+          onNext={controls.goNext}
+          onPrevious={controls.goPrevious}
+        />
+      ) : (
+        <main
+          className="motion-deck-root"
+          onTouchEnd={handleTouchEnd}
+          onTouchStart={handleTouchStart}
+        >
+          <div className="motion-deck-viewport">
+            <MotionStage
+              direction={direction}
+              frame={frame}
+              isGridVisible={isGridVisible}
+              onAdvance={controls.goNext}
+            />
+          </div>
+        </main>
+      )}
     </MotionConfig>
   );
 }
