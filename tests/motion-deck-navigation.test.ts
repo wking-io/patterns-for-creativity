@@ -7,6 +7,7 @@ import {
   getKeyboardNavigationIntent,
   getSwipeNavigationIntent,
   resolveFrameNavigation,
+  shouldToggleAudienceBlackout,
 } from "../src/motion-deck/navigation.js";
 
 const frameCount = 15;
@@ -44,6 +45,23 @@ assert.equal(getKeyboardNavigationIntent({ code: "ArrowRight", key: "ArrowRight"
 assert.equal(getKeyboardNavigationIntent({ code: "KeyP", key: "p", shiftKey: false }), "previous");
 assert.equal(getKeyboardNavigationIntent({ code: "KeyG", key: "G", shiftKey: true }), "toggle-grid");
 assert.equal(getKeyboardNavigationIntent({ code: "KeyX", key: "x", shiftKey: false }), undefined);
+
+const blackoutKey = {
+  altKey: false,
+  code: "KeyB",
+  ctrlKey: false,
+  key: "b",
+  metaKey: false,
+  repeat: false,
+};
+assert.equal(shouldToggleAudienceBlackout(blackoutKey, false), true);
+assert.equal(
+  shouldToggleAudienceBlackout(blackoutKey, true),
+  false,
+  "typing B in an editable notes field does not toggle blackout",
+);
+assert.equal(shouldToggleAudienceBlackout({ ...blackoutKey, repeat: true }, false), false);
+assert.equal(shouldToggleAudienceBlackout({ ...blackoutKey, ctrlKey: true }, false), false);
 
 assert.equal(getSwipeNavigationIntent({ x: 100, y: 10 }, { x: 40, y: 12 }), "next");
 assert.equal(getSwipeNavigationIntent({ x: 40, y: 10 }, { x: 100, y: 12 }), "previous");

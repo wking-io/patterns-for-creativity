@@ -3,6 +3,7 @@ import type { DeckDirection } from "./navigation.js";
 
 export const presentationChannelName = "patterns-for-creativity-presentation";
 export const presentationMessageVersion = 1;
+export const audienceBlackoutSearchParameter = "blackout";
 
 export type DeckViewMode = "deck" | "presenter" | "audience";
 export type AudienceConnectionStatus =
@@ -19,6 +20,7 @@ export type PresentationStateMessage = {
   revision: number;
   direction: DeckDirection;
   frameIndex: number;
+  isAudienceBlackout: boolean;
 };
 
 export type AudiencePresenceMessage = {
@@ -64,12 +66,27 @@ export function createAudienceDisplayUrl(
   currentHref: string,
   frameIndex: number,
   frameCount: number,
+  isAudienceBlackout = false,
 ) {
   const url = new URL(currentHref);
   url.searchParams.set("view", "audience");
+  updateAudienceBlackoutSearchParameter(url, isAudienceBlackout);
   url.hash = createFrameHash(frameIndex, frameCount);
 
   return url.toString();
+}
+
+export function createAudienceBlackoutUrl(
+  currentHref: string,
+  isAudienceBlackout: boolean,
+) {
+  const url = new URL(currentHref);
+  updateAudienceBlackoutSearchParameter(url, isAudienceBlackout);
+  return url.toString();
+}
+
+export function getInitialAudienceBlackout(search: string) {
+  return new URLSearchParams(search).get(audienceBlackoutSearchParameter) === "1";
 }
 
 export function createPresentationStateMessage(
@@ -77,6 +94,7 @@ export function createPresentationStateMessage(
   revision: number,
   frameIndex: number,
   direction: DeckDirection,
+  isAudienceBlackout = false,
 ): PresentationStateMessage {
   return {
     type: "presentation-state",
@@ -85,6 +103,7 @@ export function createPresentationStateMessage(
     revision,
     direction,
     frameIndex,
+    isAudienceBlackout,
   };
 }
 
@@ -126,7 +145,8 @@ export function parsePresentationMessage(
     !isNonNegativeInteger(value.revision) ||
     (value.direction !== -1 && value.direction !== 1) ||
     !isNonNegativeInteger(value.frameIndex) ||
-    value.frameIndex >= frameCount
+    value.frameIndex >= frameCount ||
+    typeof value.isAudienceBlackout !== "boolean"
   ) {
     return undefined;
   }
@@ -138,6 +158,7 @@ export function parsePresentationMessage(
     revision: value.revision,
     direction: value.direction,
     frameIndex: value.frameIndex,
+    isAudienceBlackout: value.isAudienceBlackout,
   };
 }
 
@@ -241,6 +262,14 @@ export function deliverPresentationMessage(
   }
 
   return deliveryCount;
+}
+
+function updateAudienceBlackoutSearchParameter(url: URL, isAudienceBlackout: boolean) {
+  if (isAudienceBlackout) {
+    url.searchParams.set(audienceBlackoutSearchParameter, "1");
+  } else {
+    url.searchParams.delete(audienceBlackoutSearchParameter);
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

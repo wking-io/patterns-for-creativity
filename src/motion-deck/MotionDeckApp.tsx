@@ -14,6 +14,7 @@ import {
   getKeyboardNavigationIntent,
   getSwipeNavigationIntent,
   resolveFrameNavigation,
+  shouldToggleAudienceBlackout,
 } from "./navigation";
 import "./styles.css";
 
@@ -54,7 +55,12 @@ export function MotionDeckApp() {
     });
   }, []);
 
-  const { audienceStatus, openAudienceDisplay } = usePresentationSession({
+  const {
+    audienceStatus,
+    isAudienceBlackout,
+    openAudienceDisplay,
+    toggleAudienceBlackout,
+  } = usePresentationSession({
     direction,
     frameCount,
     frameIndex,
@@ -96,7 +102,18 @@ export function MotionDeckApp() {
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (isEditableTarget(event.target)) {
+      const hasEditableTarget = isEditableTarget(event.target);
+
+      if (
+        isPresenterView &&
+        shouldToggleAudienceBlackout(event, hasEditableTarget)
+      ) {
+        event.preventDefault();
+        toggleAudienceBlackout();
+        return;
+      }
+
+      if (hasEditableTarget) {
         return;
       }
 
@@ -125,7 +142,7 @@ export function MotionDeckApp() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [controls, isAudienceView]);
+  }, [controls, isAudienceView, isPresenterView, toggleAudienceBlackout]);
 
   const handleTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
     const touch = event.changedTouches[0];
@@ -166,11 +183,15 @@ export function MotionDeckApp() {
           audienceStatus={audienceStatus}
           direction={direction}
           frameIndex={frameIndex}
+          isAudienceBlackout={isAudienceBlackout}
           isGridVisible={isGridVisible}
           onNext={controls.goNext}
           onOpenAudience={openAudienceDisplay}
           onPrevious={controls.goPrevious}
+          onToggleAudienceBlackout={toggleAudienceBlackout}
         />
+      ) : isAudienceView && isAudienceBlackout ? (
+        <main aria-label="Audience display blacked out" className="audience-blackout" />
       ) : (
         <main
           className="motion-deck-root"

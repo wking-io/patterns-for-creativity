@@ -38,20 +38,24 @@ type PresenterViewProps = {
   audienceStatus: AudienceConnectionStatus;
   direction: number;
   frameIndex: number;
+  isAudienceBlackout: boolean;
   isGridVisible: boolean;
   onNext: () => void;
   onOpenAudience: () => void;
   onPrevious: () => void;
+  onToggleAudienceBlackout: () => void;
 };
 
 export function PresenterView({
   audienceStatus,
   direction,
   frameIndex,
+  isAudienceBlackout,
   isGridVisible,
   onNext,
   onOpenAudience,
   onPrevious,
+  onToggleAudienceBlackout,
 }: PresenterViewProps) {
   const [notesSession, dispatchNotes] = useReducer(
     notesSessionReducer,
@@ -76,7 +80,13 @@ export function PresenterView({
   const currentNote = selectSessionNote(notesSession, frame.id);
   const isEditing = editingFrameId === frame.id;
   const hasPersistentFileSupport = supportsPersistentNotesFiles();
-  const audienceStatusContent = getAudienceStatusContent(audienceStatus);
+  const audienceStatusContent = getAudienceStatusContent(
+    audienceStatus,
+    isAudienceBlackout,
+  );
+  const canToggleAudienceBlackout = (
+    audienceStatus === "connected" || isAudienceBlackout
+  );
   const elapsedTime = formatElapsedTime(getElapsedMilliseconds(timer, now));
   const timerAction = timer.status === "idle"
     ? "Start"
@@ -282,6 +292,17 @@ export function PresenterView({
         <div className="presenter-view-header__status">
           <div className="presenter-view-header__presentation-actions">
             <span>{frameIndex + 1} / {motionDeckFrames.length}</span>
+            <button
+              aria-keyshortcuts="B"
+              aria-pressed={isAudienceBlackout}
+              className="presenter-blackout-control"
+              data-active={isAudienceBlackout}
+              disabled={!canToggleAudienceBlackout}
+              onClick={onToggleAudienceBlackout}
+              type="button"
+            >
+              {isAudienceBlackout ? "Restore audience (B)" : "Black out audience (B)"}
+            </button>
             <button onClick={onOpenAudience} type="button">
               {audienceStatusContent.action}
             </button>
@@ -289,6 +310,7 @@ export function PresenterView({
           <span
             aria-live="polite"
             className="presenter-audience-status"
+            data-blackout={isAudienceBlackout ? "active" : "inactive"}
             data-status={audienceStatus}
           >
             <strong>{audienceStatusContent.label}</strong>
@@ -510,37 +532,54 @@ function getPresenterPreferenceStorage() {
   }
 }
 
-function getAudienceStatusContent(status: AudienceConnectionStatus) {
-  switch (status) {
-    case "opening":
-      return {
-        action: "Open again",
-        detail: "Waiting for the audience window to check in.",
-        label: "Audience display opening",
-      };
-    case "connected":
-      return {
-        action: "Refresh audience display",
-        detail: "Following the current presenter frame.",
-        label: "Audience display connected",
-      };
-    case "disconnected":
-      return {
-        action: "Reconnect audience display",
-        detail: "No recent response. Reopen it to restore the current frame.",
-        label: "Audience display disconnected",
-      };
-    case "popup-blocked":
-      return {
-        action: "Try opening again",
-        detail: "Allow pop-ups for this page, then try again.",
-        label: "Audience display blocked",
-      };
-    case "closed":
-      return {
-        action: "Open audience display",
-        detail: "Open or reopen a second display when ready.",
-        label: "Audience display closed",
-      };
+function getAudienceStatusContent(
+  status: AudienceConnectionStatus,
+  isAudienceBlackout: boolean,
+) {
+  const content = (() => {
+    switch (status) {
+      case "opening":
+        return {
+          action: "Open again",
+          detail: "Waiting for the audience window to check in.",
+          label: "Audience display opening",
+        };
+      case "connected":
+        return {
+          action: "Refresh audience display",
+          detail: "Following the current presenter frame.",
+          label: "Audience display connected",
+        };
+      case "disconnected":
+        return {
+          action: "Reconnect audience display",
+          detail: "No recent response. Reopen it to restore the current frame.",
+          label: "Audience display disconnected",
+        };
+      case "popup-blocked":
+        return {
+          action: "Try opening again",
+          detail: "Allow pop-ups for this page, then try again.",
+          label: "Audience display blocked",
+        };
+      case "closed":
+        return {
+          action: "Open audience display",
+          detail: "Open or reopen a second display when ready.",
+          label: "Audience display closed",
+        };
+    }
+  })();
+
+  if (!isAudienceBlackout) {
+    return content;
   }
+
+  return {
+    ...content,
+    label: status === "connected" ? "Audience blacked out" : "Blackout remains active",
+    detail: status === "connected"
+      ? "Navigation continues; press B to restore the latest frame."
+      : "A reconnected audience will remain black until you restore it.",
+  };
 }

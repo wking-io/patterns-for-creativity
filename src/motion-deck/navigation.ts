@@ -83,6 +83,23 @@ export function getKeyboardNavigationIntent(event: Pick<KeyboardEvent, "code" | 
   return undefined;
 }
 
+export function shouldToggleAudienceBlackout(
+  event: Pick<KeyboardEvent, "altKey" | "code" | "ctrlKey" | "key" | "metaKey" | "repeat">,
+  isEditableTarget: boolean,
+) {
+  if (
+    isEditableTarget ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.repeat
+  ) {
+    return false;
+  }
+
+  return event.key.toLowerCase() === "b" || event.code === "KeyB";
+}
+
 export function getSwipeNavigationIntent(start: SwipePoint, end: SwipePoint): Exclude<KeyboardNavigationIntent, "toggle-grid"> | undefined {
   const deltaX = end.x - start.x;
   const deltaY = end.y - start.y;
@@ -93,4 +110,3 @@ export function getSwipeNavigationIntent(start: SwipePoint, end: SwipePoint): Ex
 
   return deltaX < 0 ? "next" : "previous";
 }
-

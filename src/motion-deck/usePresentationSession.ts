@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { DeckDirection } from "./navigation";
 import {
   acceptPresentationState,
+  createAudienceBlackoutUrl,
   createAudienceConnectionState,
   createAudienceDisplayUrl,
   createAudiencePresenceMessage,
   createPresentationStateCursor,
   createPresentationStateMessage,
   deliverPresentationMessage,
+  getInitialAudienceBlackout,
   parsePresentationMessage,
   presentationChannelName,
   reduceAudienceConnection,
@@ -40,6 +42,9 @@ export function usePresentationSession({
   const [audienceConnection, setAudienceConnection] = useState(
     createAudienceConnectionState,
   );
+  const [isAudienceBlackout, setIsAudienceBlackout] = useState(() => (
+    viewMode === "audience" && getInitialAudienceBlackout(window.location.search)
+  ));
   const channelRef = useRef<BroadcastChannel | undefined>(undefined);
   const popupRef = useRef<Window | undefined>(undefined);
   const presenterSessionIdRef = useRef(createPeerId("presenter"));
@@ -50,6 +55,7 @@ export function usePresentationSession({
     revisionRef.current,
     frameIndex,
     direction,
+    false,
   ));
   const cursorRef = useRef(createPresentationStateCursor());
 
@@ -111,6 +117,12 @@ export function usePresentationSession({
     cursorRef.current = result.cursor;
 
     if (result.accepted) {
+      setIsAudienceBlackout(message.isAudienceBlackout);
+      window.history.replaceState(
+        null,
+        "",
+        createAudienceBlackoutUrl(window.location.href, message.isAudienceBlackout),
+      );
       onAudienceState(message);
     }
   }, [frameCount, onAudienceState, sendMessage, updateAudienceConnection, viewMode]);
@@ -180,7 +192,8 @@ export function usePresentationSession({
 
     if (
       previousState.frameIndex !== frameIndex ||
-      previousState.direction !== direction
+      previousState.direction !== direction ||
+      previousState.isAudienceBlackout !== isAudienceBlackout
     ) {
       revisionRef.current += 1;
     }
@@ -190,10 +203,11 @@ export function usePresentationSession({
       revisionRef.current,
       frameIndex,
       direction,
+      isAudienceBlackout,
     );
     latestStateRef.current = nextState;
     sendMessage(nextState);
-  }, [direction, frameIndex, sendMessage, viewMode]);
+  }, [direction, frameIndex, isAudienceBlackout, sendMessage, viewMode]);
 
   useEffect(() => {
     if (viewMode !== "presenter") {
@@ -230,6 +244,7 @@ export function usePresentationSession({
       window.location.href,
       frameIndex,
       frameCount,
+      isAudienceBlackout,
     );
     const popup = window.open(
       audienceUrl,
@@ -245,11 +260,23 @@ export function usePresentationSession({
 
     popupRef.current = popup;
     popup.focus();
-  }, [frameCount, frameIndex, updateAudienceConnection]);
+  }, [frameCount, frameIndex, isAudienceBlackout, updateAudienceConnection]);
+
+  const toggleAudienceBlackout = useCallback(() => {
+    if (viewMode !== "presenter") {
+      return;
+    }
+
+    setIsAudienceBlackout((current) => (
+      current || audienceConnection.status === "connected" ? !current : current
+    ));
+  }, [audienceConnection.status, viewMode]);
 
   return {
     audienceStatus: audienceConnection.status,
+    isAudienceBlackout,
     openAudienceDisplay,
+    toggleAudienceBlackout,
   };
 }
 

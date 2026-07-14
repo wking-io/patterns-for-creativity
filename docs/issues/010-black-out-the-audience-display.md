@@ -1,7 +1,7 @@
 # Black Out The Audience Display
 
 Type: AFK
-Status: ready-for-agent
+Status: Done
 
 ## What to build
 
@@ -11,16 +11,16 @@ The presenter should continue seeing previews and notes and should be able to na
 
 ## Acceptance criteria
 
-- [ ] Presenter View has a visible audience-blackout control and a `B` keyboard shortcut.
-- [ ] Activating blackout replaces the audience display with a fully black surface while leaving Presenter View unchanged.
-- [ ] Frame navigation, notes editing, saving, and timing continue while the audience is blacked out.
-- [ ] Clearing blackout reveals the latest current frame and normal presentation rendering.
-- [ ] An audience display that opens or reconnects during blackout starts blacked out until the presenter clears the state.
-- [ ] Blackout state is owned by the presenter and cannot be cleared by an audience-display reload.
-- [ ] Typing `B` in an editable notes field does not toggle blackout.
-- [ ] Blackout has no effect when Presenter View has no connected audience display, apart from clearly communicating that state.
-- [ ] Focused tests cover blackout synchronization, navigation during blackout, late audience joining, and editable-target keyboard handling.
-- [ ] `pnpm check`, `pnpm test`, and `pnpm build` pass.
+- [x] Presenter View has a visible audience-blackout control and a `B` keyboard shortcut.
+- [x] Activating blackout replaces the audience display with a fully black surface while leaving Presenter View unchanged.
+- [x] Frame navigation, notes editing, saving, and timing continue while the audience is blacked out.
+- [x] Clearing blackout reveals the latest current frame and normal presentation rendering.
+- [x] An audience display that opens or reconnects during blackout starts blacked out until the presenter clears the state.
+- [x] Blackout state is owned by the presenter and cannot be cleared by an audience-display reload.
+- [x] Typing `B` in an editable notes field does not toggle blackout.
+- [x] Blackout has no effect when Presenter View has no connected audience display, apart from clearly communicating that state.
+- [x] Focused tests cover blackout synchronization, navigation during blackout, late audience joining, and editable-target keyboard handling.
+- [x] `pnpm check`, `pnpm test`, and `pnpm build` pass.
 
 ## Blocked by
 

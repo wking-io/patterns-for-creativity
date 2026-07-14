@@ -10,6 +10,14 @@
   width: 100dvw;
 }
 
+.audience-blackout {
+  background: #000000;
+  height: 100dvh;
+  inset: 0;
+  position: fixed;
+  width: 100dvw;
+}
+
 .motion-deck-viewport {
   --motion-deck-height: min(100dvh, calc(100dvw * 2112 / 3754));
   aspect-ratio: 3754 / 2112;
@@ -180,12 +188,20 @@
 .presenter-view-header__presentation-actions {
   align-items: center;
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
+  justify-content: flex-end;
 }
 
 .presenter-view-header__presentation-actions button {
   min-height: 32px;
   padding-block: 5px;
+}
+
+.presenter-view-root .presenter-blackout-control[data-active="true"] {
+  background: #050505;
+  border-color: #f3f1f1;
+  color: #ffffff;
 }
 
 .presenter-notes-status {
@@ -219,6 +235,10 @@
 
 .presenter-audience-status[data-status="connected"] strong {
   color: #a8d99a;
+}
+
+.presenter-audience-status[data-blackout="active"] strong {
+  color: #f3f1f1;
 }
 
 .presenter-audience-status[data-status="opening"] strong {

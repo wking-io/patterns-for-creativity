@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   acceptPresentationState,
+  createAudienceBlackoutUrl,
   createAudienceConnectionState,
   createAudienceDisplayUrl,
   createAudiencePresenceMessage,
@@ -8,6 +9,7 @@ import {
   createPresentationStateMessage,
   deliverPresentationMessage,
   getDeckViewMode,
+  getInitialAudienceBlackout,
   parsePresentationMessage,
   reduceAudienceConnection,
 } from "../src/motion-deck/presentation-sync.js";
@@ -26,6 +28,24 @@ assert.equal(
   createAudienceDisplayUrl("file:///tmp/motion-deck.html?view=presenter#/3", 4, 29),
   "file:///tmp/motion-deck.html?view=audience#/5",
 );
+assert.equal(
+  createAudienceDisplayUrl(
+    "https://example.test/talk?theme=dark&view=presenter#/3",
+    4,
+    29,
+    true,
+  ),
+  "https://example.test/talk?theme=dark&view=audience&blackout=1#/5",
+);
+assert.equal(
+  createAudienceBlackoutUrl(
+    "https://example.test/talk?view=audience&blackout=1#/5",
+    false,
+  ),
+  "https://example.test/talk?view=audience#/5",
+);
+assert.equal(getInitialAudienceBlackout("?view=audience&blackout=1"), true);
+assert.equal(getInitialAudienceBlackout("?view=audience"), false);
 
 const initialState = createPresentationStateMessage("presenter-a", 0, 7, 1);
 assert.deepEqual(initialState, {
@@ -35,6 +55,7 @@ assert.deepEqual(initialState, {
   revision: 0,
   direction: 1,
   frameIndex: 7,
+  isAudienceBlackout: false,
 });
 assert.deepEqual(parsePresentationMessage(initialState, 29), initialState);
 
@@ -44,6 +65,10 @@ assert.equal(parsePresentationMessage({ ...initialState, frameIndex: 29 }, 29), 
 assert.equal(parsePresentationMessage({ ...initialState, revision: -1 }, 29), undefined);
 assert.equal(parsePresentationMessage({ ...initialState, direction: 0 }, 29), undefined);
 assert.equal(parsePresentationMessage({ ...initialState, sessionId: "" }, 29), undefined);
+assert.equal(
+  parsePresentationMessage({ ...initialState, isAudienceBlackout: "yes" }, 29),
+  undefined,
+);
 assert.equal(parsePresentationMessage({ ...initialState, version: 2 }, 29), undefined);
 assert.equal(parsePresentationMessage("not a message", 29), undefined);
 
@@ -80,6 +105,36 @@ result = acceptPresentationState(
   createPresentationStateMessage("presenter-a", 3, 10, 1),
 );
 assert.equal(result.accepted, false, "a delayed message from a retired session stays rejected");
+
+const blackoutState = createPresentationStateMessage("presenter-b", 1, 4, 1, true);
+result = acceptPresentationState(cursor, blackoutState);
+assert.equal(result.accepted, true, "the presenter can black out without changing frames");
+cursor = result.cursor;
+
+const navigationDuringBlackout = createPresentationStateMessage(
+  "presenter-b",
+  2,
+  8,
+  1,
+  true,
+);
+result = acceptPresentationState(cursor, navigationDuringBlackout);
+assert.equal(result.accepted, true, "navigation remains synchronized during blackout");
+assert.equal(navigationDuringBlackout.frameIndex, 8);
+assert.equal(navigationDuringBlackout.isAudienceBlackout, true);
+cursor = result.cursor;
+
+const lateAudienceResult = acceptPresentationState(
+  createPresentationStateCursor(),
+  navigationDuringBlackout,
+);
+assert.equal(lateAudienceResult.accepted, true, "a late audience accepts blackout state");
+assert.equal(navigationDuringBlackout.isAudienceBlackout, true);
+
+const restoredState = createPresentationStateMessage("presenter-b", 3, 8, 1, false);
+result = acceptPresentationState(cursor, restoredState);
+assert.equal(result.accepted, true, "restoring reveals the latest synchronized frame");
+assert.equal(restoredState.frameIndex, navigationDuringBlackout.frameIndex);
 
 let connection = createAudienceConnectionState();
 connection = reduceAudienceConnection(connection, { type: "open-requested", at: 100 });
