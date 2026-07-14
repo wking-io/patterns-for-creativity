@@ -38,10 +38,13 @@ export type NotesSessionAction =
   | { type: "invalid-file"; message: string };
 
 export function createInitialNotesSessionState(): NotesSessionState {
+  const document = createEmptySpeakerNotesFile();
+
   return {
-    document: createEmptySpeakerNotesFile(),
+    document,
     isDirty: false,
     phase: "empty",
+    savedSource: serializeSpeakerNotesFile(document),
   };
 }
 
@@ -70,8 +73,12 @@ export function notesSessionReducer(
         ...state,
         document,
         isDirty,
-        message: isDirty ? "Unsaved changes." : "All changes saved.",
-        phase: isDirty ? "dirty" : "clean",
+        message: isDirty
+          ? "Unsaved changes."
+          : state.fileName
+            ? "All changes saved."
+            : "No notes file open.",
+        phase: isDirty ? "dirty" : state.fileName ? "clean" : "empty",
       };
     }
     case "save-start":

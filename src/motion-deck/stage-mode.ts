@@ -1,4 +1,4 @@
-export type MotionStageMode = "live" | "preview";
+export type MotionStageMode = "live" | "audience" | "preview";
 
 export type MotionStageBehavior = {
   animateContent: boolean;
@@ -14,6 +14,15 @@ export function getMotionStageBehavior(mode: MotionStageMode): MotionStageBehavi
       animateLayout: false,
       autoAdvance: false,
       autoplayMedia: false,
+    };
+  }
+
+  if (mode === "audience") {
+    return {
+      animateContent: true,
+      animateLayout: true,
+      autoAdvance: false,
+      autoplayMedia: true,
     };
   }
 

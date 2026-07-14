@@ -55,6 +55,20 @@ assert.equal(session.phase, "empty");
 assert.equal(session.isDirty, false);
 
 session = notesSessionReducer(session, {
+  type: "edit-note",
+  frameId: "cover",
+  note: { body: "Temporary opening." },
+});
+assert.equal(session.isDirty, true);
+session = notesSessionReducer(session, {
+  type: "edit-note",
+  frameId: "cover",
+  note: { body: "" },
+});
+assert.equal(session.phase, "empty");
+assert.equal(session.isDirty, false);
+
+session = notesSessionReducer(session, {
   type: "replace-document",
   document: withCoverNote,
   fileName: "talk-notes.json",

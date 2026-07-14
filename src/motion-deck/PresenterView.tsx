@@ -26,6 +26,7 @@ type PresenterViewProps = {
   frameIndex: number;
   isGridVisible: boolean;
   onNext: () => void;
+  onOpenAudience: () => void;
   onPrevious: () => void;
 };
 
@@ -34,6 +35,7 @@ export function PresenterView({
   frameIndex,
   isGridVisible,
   onNext,
+  onOpenAudience,
   onPrevious,
 }: PresenterViewProps) {
   const [notesSession, dispatchNotes] = useReducer(
@@ -197,7 +199,10 @@ export function PresenterView({
           <h1>{frame.label}</h1>
         </div>
         <div className="presenter-view-header__status">
-          <span>{frameIndex + 1} / {motionDeckFrames.length}</span>
+          <div className="presenter-view-header__presentation-actions">
+            <span>{frameIndex + 1} / {motionDeckFrames.length}</span>
+            <button onClick={onOpenAudience} type="button">Open audience display</button>
+          </div>
           <span
             aria-live="polite"
             className="presenter-notes-status"

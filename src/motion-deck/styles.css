@@ -119,6 +119,17 @@
   text-align: right;
 }
 
+.presenter-view-header__presentation-actions {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+}
+
+.presenter-view-header__presentation-actions button {
+  min-height: 32px;
+  padding-block: 5px;
+}
+
 .presenter-notes-status {
   color: #b7afa9;
   font-size: 0.78rem;
