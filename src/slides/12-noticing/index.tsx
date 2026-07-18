@@ -1,4 +1,7 @@
-import noticingUrl from "./noticing.svg";
+import { StatementAxisSlide } from "../StatementAxisSlide";
+import lineLeftUrl from "./line-left.svg";
+import lineRightUrl from "./line-right.svg";
+import { AnimatedEye } from "./AnimatedEye";
 
 type NoticingSlideProps = {
   className?: string;
@@ -6,18 +9,14 @@ type NoticingSlideProps = {
 
 export function NoticingSlide({ className = "" }: NoticingSlideProps) {
   return (
-    <div
-      aria-label="You can't have ideas for things you never notice"
+    <StatementAxisSlide
       className={`noticing-slide ${className}`.trim()}
-      role="img"
-    >
-      <img
-        alt=""
-        aria-hidden="true"
-        className="noticing-slide__artwork"
-        draggable={false}
-        src={noticingUrl}
-      />
-    </div>
+      headline="You can't have ideas for things you never notice"
+      icon={<AnimatedEye initialDelayMs={1_050} />}
+      leftLabel="The Art of"
+      leftLineUrl={lineLeftUrl}
+      rightLabel="Noticing"
+      rightLineUrl={lineRightUrl}
+    />
   );
 }

@@ -39,19 +39,21 @@ test("inlines script, style, and referenced assets in single-file HTML", async (
     await mkdir(path.join(outDir, "assets"));
     await writeFile(
       path.join(outDir, "assets", "app.js"),
-      'console.log("/assets/logo.svg");',
+      'console.log("/assets/logo.svg", "/assets/demo.webm");',
     );
     await writeFile(
       path.join(outDir, "assets", "app.css"),
       '.hero { background-image: url("/assets/logo.svg"); }',
     );
     await writeFile(path.join(outDir, "assets", "logo.svg"), "<svg></svg>");
+    await writeFile(path.join(outDir, "assets", "demo.webm"), "webm");
 
     const html = await getSingleFileHtml({
       assets: [
         { bytes: 27, kind: "script", url: "/assets/app.js" },
         { bytes: 50, kind: "style", url: "/assets/app.css" },
         { bytes: 11, kind: "image", url: "/assets/logo.svg" },
+        { bytes: 4, kind: "other", url: "/assets/demo.webm" },
       ],
       indexHtml: [
         "<html>",
@@ -69,9 +71,11 @@ test("inlines script, style, and referenced assets in single-file HTML", async (
 
     assert.match(html, /<style>[\s\S]*data:image\/svg\+xml;base64,/);
     assert.match(html, /<script type="module">[\s\S]*data:image\/svg\+xml;base64,/);
+    assert.match(html, /<script type="module">[\s\S]*data:video\/webm;base64,/);
     assert.doesNotMatch(html, /href="\/assets\/app\.css"/);
     assert.doesNotMatch(html, /src="\/assets\/app\.js"/);
     assert.doesNotMatch(html, /\/assets\/logo\.svg/);
+    assert.doesNotMatch(html, /\/assets\/demo\.webm/);
   } finally {
     await rm(outDir, { force: true, recursive: true });
   }

@@ -31,7 +31,6 @@
   --radius-contained: calc(var(--slide-coordinate-height) * 0.065);
   --title-footer-font-size: calc(var(--slide-coordinate-height) * 0.04);
   height: 100%;
-  isolation: isolate;
   overflow: hidden;
   position: relative;
   width: 100%;

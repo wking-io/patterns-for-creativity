@@ -5,7 +5,7 @@ import altOneSvg from "../09-other-paths/alt-1.svg?raw";
 import altTwoSvg from "../09-other-paths/alt-2.svg?raw";
 import squiggleSvg from "./path.svg?raw";
 import readyUrl from "./ready.svg";
-import creativePathFogUrl from "./fog.png";
+import creativePathFogUrl from "./fog.webp";
 
 export type CreativePathVariant = "original" | "alt-1" | "alt-2";
 

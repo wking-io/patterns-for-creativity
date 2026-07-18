@@ -78,7 +78,7 @@ export function FeedbackSlide({
         visible={isLeftVisible}
       />
       <FeedbackDetail
-        delay={0.08}
+        delay={0.18}
         label="Metrics"
         labelUrl={metricsTextUrl}
         row="first"
@@ -86,7 +86,7 @@ export function FeedbackSlide({
         visible={isRightVisible}
       />
       <FeedbackDetail
-        delay={0.22}
+        delay={0.34}
         label="Logs & Bugs"
         labelUrl={logsBugsTextUrl}
         row="second"
@@ -183,11 +183,19 @@ function FeedbackDetail({
         `feedback-slide__detail--${side}`,
         `feedback-slide__detail--${row}`,
       ].join(" ")}
-      initial={false}
+      initial="hidden"
+      key={`${side}-${row}-${visible ? "visible" : "hidden"}`}
       transition={{
-        delay: visible ? delay : 0,
-        duration: 0.34,
-        ease: [0.22, 1, 0.36, 1],
+        opacity: {
+          delay: visible ? delay : 0,
+          duration: 0.3,
+          ease: [0.22, 1, 0.36, 1],
+        },
+        x: {
+          delay: visible ? delay : 0,
+          duration: 0.34,
+          ease: [0.22, 1, 0.36, 1],
+        },
       }}
       variants={detailVariants}
     >

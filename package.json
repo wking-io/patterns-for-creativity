@@ -8,7 +8,7 @@
     "dev": "vite --host 127.0.0.1 --configLoader runner",
     "dev:lan": "vite --host 0.0.0.0 --configLoader runner",
     "test": "pnpm test:node && pnpm test:cloud",
-    "test:node": "tsc -p tsconfig.test.json && node .tmp/tests/tests/offline-package.test.js && node .tmp/tests/tests/motion-deck-navigation.test.js && node .tmp/tests/tests/speaker-notes.test.js && node .tmp/tests/tests/presentation-sync.test.js && node .tmp/tests/tests/presenter-controls.test.js",
+    "test:node": "tsc -p tsconfig.test.json && node .tmp/tests/tests/offline-package.test.js && node .tmp/tests/tests/motion-deck-navigation.test.js && node .tmp/tests/tests/slide-order.test.js && node .tmp/tests/tests/speaker-notes.test.js && node .tmp/tests/tests/presentation-sync.test.js && node .tmp/tests/tests/presenter-controls.test.js",
     "test:offline-package": "tsc -p tsconfig.test.json && node .tmp/tests/tests/offline-package.test.js",
     "test:motion-navigation": "tsc -p tsconfig.test.json && node .tmp/tests/tests/motion-deck-navigation.test.js",
     "test:cloud": "vitest run src/cloud/orchestration.test.ts",

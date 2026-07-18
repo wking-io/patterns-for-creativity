@@ -1,18 +1,27 @@
 import { motion } from "motion/react";
 import type { Transition } from "motion/react";
-import glassUrl from "./glass.png";
-import practiceOneUrl from "./practice-1.svg";
-import practiceTwoUrl from "./practice-2.svg";
-import tweetUrl from "./tweet.png";
+import glassUrl from "./glass.webp";
+import tweetUrl from "./tweet.webp";
 
 export type FeedbackPracticeSlideVariant =
   | "intro"
   | "glass"
   | "practice-2"
+  | "friction-ask-why"
+  | "friction-aperture"
+  | "friction-unspoken"
+  | "exposure-beaten-path"
+  | "exposure-notice"
+  | "shorten-loop-tools"
+  | "master-your-medium"
+  | "language-is-power"
+  | "optimize-for-exploration"
+  | "reality-output-artifacts"
   | "tweet";
 
 type FeedbackPracticeSlideProps = {
   className?: string;
+  isAnimated?: boolean;
   variant?: FeedbackPracticeSlideVariant;
 };
 
@@ -36,6 +45,7 @@ const horizontalSegments = [
 
 export function FeedbackPracticeSlide({
   className = "",
+  isAnimated = true,
   variant = "intro",
 }: FeedbackPracticeSlideProps) {
   if (variant === "glass") {
@@ -69,81 +79,156 @@ export function FeedbackPracticeSlide({
     );
   }
 
-  const isSecondPractice = variant === "practice-2";
-  const headlineAlt = isSecondPractice
-    ? "Seek the source not the surface"
-    : "Make feedback find you";
-  const headlineUrl = isSecondPractice ? practiceTwoUrl : practiceOneUrl;
+  const promptCopy = {
+    intro: {
+      counter: "01 / 02",
+      headline: "Make feedback find you",
+      topic: "Catalysts",
+    },
+    "practice-2": {
+      counter: "02 / 02",
+      headline: "Seek the source not the surface",
+      topic: "Catalysts",
+    },
+    "friction-ask-why": {
+      counter: "01 / 03",
+      headline: "Pause...ask why",
+      topic: "Friction",
+    },
+    "friction-aperture": {
+      counter: "02 / 03",
+      headline: "Change your aperture",
+      topic: "Friction",
+    },
+    "friction-unspoken": {
+      counter: "03 / 03",
+      headline: "What people do not say",
+      topic: "Friction",
+    },
+    "exposure-beaten-path": {
+      counter: "01 / 02",
+      headline: "Get off the beaten path",
+      topic: "Exposure",
+    },
+    "exposure-notice": {
+      counter: "02 / 02",
+      headline: "Collect what you notice",
+      topic: "Exposure",
+    },
+    "shorten-loop-tools": {
+      counter: "01 / 01",
+      headline: "Make your own tools",
+      topic: "Shorten the loop",
+    },
+    "master-your-medium": {
+      counter: "01 / 02",
+      headline: "Master your medium",
+      topic: "Ideas",
+    },
+    "language-is-power": {
+      counter: "02 / 02",
+      headline: "Language is power",
+      topic: "Ideas",
+    },
+    "optimize-for-exploration": {
+      counter: "01 / 02",
+      headline: "Optimize for exploration",
+      topic: "Taste",
+    },
+    "reality-output-artifacts": {
+      counter: "01 / 01",
+      headline: "The output is not the artifacts",
+      topic: "Reality",
+    },
+  }[variant];
+  const usesGradientGlitch =
+    variant === "master-your-medium" ||
+    variant === "language-is-power" ||
+    variant === "optimize-for-exploration";
 
   return (
     <div
-      className={`feedback-practice-slide ${isSecondPractice ? "feedback-practice-slide--practice-2" : ""} ${className}`.trim()}
+      className={`feedback-practice-slide feedback-practice-slide--${variant} ${
+        usesGradientGlitch ? "feedback-practice-slide--gradient-glitch" : ""
+      } ${
+        isAnimated ? "" : "feedback-practice-slide--static"
+      } ${className}`.trim()}
     >
-      <AnimatedCopy position="top-left">Creative Practice</AnimatedCopy>
-      <AnimatedCopy position="top-right">Catalysts</AnimatedCopy>
-      <AnimatedCopy position="bottom-left">Method</AnimatedCopy>
-      <AnimatedCopy position="bottom-right">
-        {isSecondPractice ? "02 / 02" : "01 / 02"}
-      </AnimatedCopy>
+      <AnimatedCopy isAnimated={isAnimated} position="top-left">Creative Practice</AnimatedCopy>
+      <AnimatedCopy isAnimated={isAnimated} position="top-right">{promptCopy.topic}</AnimatedCopy>
+      <AnimatedCopy isAnimated={isAnimated} position="bottom-left">Method</AnimatedCopy>
+      <AnimatedCopy isAnimated={isAnimated} position="bottom-right">{promptCopy.counter}</AnimatedCopy>
 
-      <AnimatedCrosshair side="left" />
-      <AnimatedCrosshair side="right" />
+      <AnimatedCrosshair isAnimated={isAnimated} side="left" />
+      <AnimatedCrosshair isAnimated={isAnimated} side="right" />
 
-      <GlitchHeadline alt={headlineAlt} artworkUrl={headlineUrl} />
+      <GlitchHeadline
+        key={variant}
+        shadow={usesGradientGlitch}
+      >
+        {promptCopy.headline}
+      </GlitchHeadline>
     </div>
   );
 }
 
-function GlitchHeadline({ alt, artworkUrl }: { alt: string; artworkUrl: string }) {
+function GlitchHeadline({
+  children,
+  shadow = false,
+}: {
+  children: string;
+  shadow?: boolean;
+}) {
   return (
-    <div className="feedback-practice-slide__headline">
-      <img
-        alt={alt}
-        className="feedback-practice-slide__headline-artwork feedback-practice-slide__headline-artwork--base"
-        draggable={false}
-        src={artworkUrl}
-      />
+    <>
+      {shadow ? (
+        <p
+          aria-hidden="true"
+          className="feedback-practice-slide__headline-shadow"
+        >
+          <span className="feedback-practice-slide__headline-shadow-copy">
+            {children}
+          </span>
+        </p>
+      ) : null}
 
-      <span
-        aria-hidden="true"
-        className="feedback-practice-slide__headline-slice feedback-practice-slide__headline-slice--red"
-      >
-        <img
-          alt=""
-          className="feedback-practice-slide__headline-artwork"
-          draggable={false}
-          src={artworkUrl}
-        />
-      </span>
+      <div className="feedback-practice-slide__headline">
+        <p className="feedback-practice-slide__headline-text feedback-practice-slide__headline-text--base">
+          {children}
+        </p>
 
-      <span
-        aria-hidden="true"
-        className="feedback-practice-slide__headline-slice feedback-practice-slide__headline-slice--cyan"
-      >
-        <img
-          alt=""
-          className="feedback-practice-slide__headline-artwork"
-          draggable={false}
-          src={artworkUrl}
-        />
-      </span>
-    </div>
+        <span
+          aria-hidden="true"
+          className="feedback-practice-slide__headline-slice feedback-practice-slide__headline-slice--red"
+        >
+          <p className="feedback-practice-slide__headline-text">{children}</p>
+        </span>
+
+        <span
+          aria-hidden="true"
+          className="feedback-practice-slide__headline-slice feedback-practice-slide__headline-slice--cyan"
+        >
+          <p className="feedback-practice-slide__headline-text">{children}</p>
+        </span>
+      </div>
+    </>
   );
 }
 
 type AnimatedCopyProps = {
   children: string;
+  isAnimated: boolean;
   position: "top-left" | "top-right" | "bottom-left" | "bottom-right";
 };
 
-function AnimatedCopy({ children, position }: AnimatedCopyProps) {
+function AnimatedCopy({ children, isAnimated, position }: AnimatedCopyProps) {
   const isTop = position.startsWith("top");
 
   return (
     <motion.span
       animate={{ opacity: 1, y: 0 }}
       className={`feedback-practice-slide__copy feedback-practice-slide__copy--${position}`}
-      initial={{ opacity: 0, y: isTop ? "55%" : "-55%" }}
+      initial={isAnimated ? { opacity: 0, y: isTop ? "55%" : "-55%" } : false}
       transition={copyTransition}
     >
       {children}
@@ -151,7 +236,13 @@ function AnimatedCopy({ children, position }: AnimatedCopyProps) {
   );
 }
 
-function AnimatedCrosshair({ side }: { side: "left" | "right" }) {
+function AnimatedCrosshair({
+  isAnimated,
+  side,
+}: {
+  isAnimated: boolean;
+  side: "left" | "right";
+}) {
   return (
     <div
       aria-hidden="true"
@@ -160,14 +251,14 @@ function AnimatedCrosshair({ side }: { side: "left" | "right" }) {
       <motion.span
         animate={{ scaleY: 1 }}
         className="feedback-practice-slide__crosshair-vertical"
-        initial={{ scaleY: 0 }}
+        initial={isAnimated ? { scaleY: 0 } : false}
         transition={crosshairVerticalTransition}
       />
       {horizontalSegments.map(({ offset, width }, index) => (
         <motion.span
           animate={{ scaleX: 1 }}
           className="feedback-practice-slide__crosshair-horizontal"
-          initial={{ scaleX: 0 }}
+          initial={isAnimated ? { scaleX: 0 } : false}
           key={offset}
           style={
             side === "left"

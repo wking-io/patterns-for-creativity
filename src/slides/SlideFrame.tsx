@@ -1,13 +1,15 @@
-import filterTextureUrl from "../../filter.png";
+import filterTextureUrl from "../../filter.webp";
 
 export type SlideKind =
   | "cover"
   | "contained-dark"
   | "contained-light"
   | "contained-gradient"
+  | "constrained-dark"
   | "constrained-gradient"
   | "full-dark"
   | "full-gradient"
+  | "page"
   | "collage";
 
 export function TitleSlideFooter() {

@@ -1,11 +1,12 @@
 import { motion } from "motion/react";
 import type { Variants } from "motion/react";
-import visual01Url from "./visual-01.png";
-import visual02Url from "./visual-02.png";
-import visual03Url from "./visual-03.png";
-import visual04Url from "./visual-04.png";
-import visual05Url from "./visual-05.png";
-import visual06Url from "./visual-06.png";
+import visual01Url from "./visual-01.webp";
+import visual02Url from "./visual-02.webp";
+import visual03Url from "./visual-03.webp";
+import visual04Url from "./visual-04.webp";
+import visual05Url from "./visual-05.webp";
+import visual06Url from "./visual-06.webp";
+import moodboardUrl from "../29-shorten-the-loop/moodboard.webp";
 
 type VisualCreativitySlideProps = {
   className?: string;
@@ -58,6 +59,22 @@ export function VisualCreativitySlide({
           variants={imageVariants}
         />
       ))}
+    </div>
+  );
+}
+
+export function VisualCreativityCollageSlide({
+  className = "",
+}: Pick<VisualCreativitySlideProps, "className">) {
+  return (
+    <div className={`visual-creativity-collage-slide ${className}`.trim()}>
+      <img
+        alt=""
+        aria-hidden="true"
+        className="visual-creativity-collage-slide__image"
+        draggable={false}
+        src={moodboardUrl}
+      />
     </div>
   );
 }

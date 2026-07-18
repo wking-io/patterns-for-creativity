@@ -1,3 +1,5 @@
+import { useId } from "react";
+import { motion } from "motion/react";
 import exposureTextUrl from "./exposure-text.svg";
 import exposureUrl from "./exposure.svg";
 import feedbackTextUrl from "./feedback-text.svg";
@@ -7,6 +9,13 @@ import frictionUrl from "./friction.svg";
 
 type CatalystSlideProps = {
   className?: string;
+};
+
+export type CatalystOutcomesStep = 0 | 1 | 2 | 3;
+
+type CatalystOutcomesSlideProps = CatalystSlideProps & {
+  onAdvance?: () => void;
+  step?: CatalystOutcomesStep;
 };
 
 const catalysts = [
@@ -53,6 +62,132 @@ export function CatalystSlide({ className = "" }: CatalystSlideProps) {
           />
         </div>
       ))}
+    </div>
+  );
+}
+
+const catalystOutcomes = [
+  {
+    id: "feedback",
+    iconUrl: feedbackUrl,
+    outcome: "Evidence",
+    source: "Feedback",
+  },
+  {
+    id: "friction",
+    iconUrl: frictionUrl,
+    outcome: "Direction",
+    source: "Friction",
+  },
+  {
+    id: "exposure",
+    iconUrl: exposureUrl,
+    outcome: "Possibility",
+    source: "Exposure",
+  },
+] as const;
+
+export function CatalystOutcomesSlide({
+  className = "",
+  onAdvance,
+  step = 0,
+}: CatalystOutcomesSlideProps) {
+  const id = useId().replace(/:/g, "");
+
+  return (
+    <div
+      aria-label={onAdvance ? "Advance catalyst outcomes" : undefined}
+      className={`catalyst-outcomes-slide ${className}`.trim()}
+      data-catalyst-outcomes-step={step}
+      onClick={onAdvance}
+      role={onAdvance ? "button" : undefined}
+      tabIndex={onAdvance ? 0 : undefined}
+    >
+      {catalystOutcomes.map(({ id: rowId, iconUrl, outcome, source }, index) => {
+        const isRevealed = index < step;
+        const gradientId = `catalyst-outcomes-gradient-${rowId}-${id}`;
+
+        return (
+          <div
+            className={`catalyst-outcomes-slide__row catalyst-outcomes-slide__row--${rowId}`}
+            key={rowId}
+          >
+            <img
+              alt=""
+              aria-hidden="true"
+              className="catalyst-outcomes-slide__icon"
+              draggable={false}
+              src={iconUrl}
+            />
+            <span className="catalyst-outcomes-slide__source">{source}</span>
+            <svg
+              aria-hidden="true"
+              className="catalyst-outcomes-slide__connector"
+              preserveAspectRatio="none"
+              viewBox="0 0 100 60"
+            >
+              <defs>
+                <linearGradient
+                  gradientUnits="userSpaceOnUse"
+                  id={gradientId}
+                  x1="0"
+                  x2="100"
+                  y1="30"
+                  y2="30"
+                >
+                  <stop offset="0" stopColor="#ff0000" />
+                  <stop offset="1" stopColor="#ffd5ab" />
+                </linearGradient>
+              </defs>
+              <motion.line
+                animate={{ opacity: isRevealed ? 1 : 0, x2: isRevealed ? 100 : 0 }}
+                className="catalyst-outcomes-slide__connector-line"
+                initial={false}
+                stroke={`url(#${gradientId})`}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                vectorEffect="non-scaling-stroke"
+                x1="0"
+                x2="100"
+                y1="30"
+                y2="30"
+              />
+              <motion.line
+                animate={{ opacity: isRevealed ? 1 : 0, scaleY: isRevealed ? 1 : 0 }}
+                className="catalyst-outcomes-slide__connector-tick"
+                initial={false}
+                stroke={`url(#${gradientId})`}
+                transition={{
+                  delay: isRevealed ? 0.42 : 0,
+                  duration: 0.18,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                vectorEffect="non-scaling-stroke"
+                x1="100"
+                x2="100"
+                y1="0"
+                y2="60"
+              />
+            </svg>
+            <motion.span
+              animate={{
+                opacity: isRevealed ? 1 : 0,
+                x: isRevealed ? 0 : -12,
+                y: "-50%",
+              }}
+              aria-hidden={!isRevealed}
+              className="catalyst-outcomes-slide__outcome"
+              initial={false}
+              transition={{
+                delay: isRevealed ? 0.44 : 0,
+                duration: 0.28,
+                ease: [0.16, 1, 0.3, 1],
+              }}
+            >
+              {outcome}
+            </motion.span>
+          </div>
+        );
+      })}
     </div>
   );
 }

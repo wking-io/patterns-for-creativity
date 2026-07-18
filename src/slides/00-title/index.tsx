@@ -25,7 +25,7 @@ export function TitleSlide({
           />
           <div
             aria-hidden="true"
-            className="cloud-contour-title-layer bg-p0 mix-blend-color"
+            className="cloud-contour-title-layer bg-p1 mix-blend-color-burn"
             style={titleMaskStyle}
           />
         </>

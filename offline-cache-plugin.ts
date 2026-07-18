@@ -12,8 +12,10 @@ const assetExtensions = new Set([
   ".jpg",
   ".js",
   ".json",
+  ".mp4",
   ".png",
   ".svg",
+  ".webm",
   ".webp",
   ".woff",
   ".woff2",
@@ -287,10 +289,14 @@ function getMimeType(url: string) {
       return "application/json";
     case ".png":
       return "image/png";
+    case ".mp4":
+      return "video/mp4";
     case ".svg":
       return "image/svg+xml";
     case ".webp":
       return "image/webp";
+    case ".webm":
+      return "video/webm";
     case ".woff":
       return "font/woff";
     case ".woff2":
