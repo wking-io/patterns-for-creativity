@@ -9,6 +9,7 @@ import frictionUrl from "./friction.svg";
 
 type CatalystSlideProps = {
   className?: string;
+  isAnimated?: boolean;
 };
 
 export type CatalystOutcomesStep = 0 | 1 | 2 | 3;
@@ -39,13 +40,23 @@ const catalysts = [
   },
 ] as const;
 
-export function CatalystSlide({ className = "" }: CatalystSlideProps) {
+export function CatalystSlide({
+  className = "",
+  isAnimated = true,
+}: CatalystSlideProps) {
   return (
     <div className={`catalyst-slide ${className}`.trim()}>
-      {catalysts.map(({ id, iconUrl, label, labelUrl }) => (
-        <div
+      {catalysts.map(({ id, iconUrl, label, labelUrl }, index) => (
+        <motion.div
+          animate={{ opacity: 1, x: 0 }}
           className={`catalyst-slide__item catalyst-slide__item--${id}`}
+          initial={isAnimated ? { opacity: 0, x: 18 } : false}
           key={id}
+          transition={{
+            delay: index * 0.14,
+            duration: 0.36,
+            ease: [0.16, 1, 0.3, 1],
+          }}
         >
           <img
             alt=""
@@ -60,7 +71,7 @@ export function CatalystSlide({ className = "" }: CatalystSlideProps) {
             draggable={false}
             src={labelUrl}
           />
-        </div>
+        </motion.div>
       ))}
     </div>
   );
@@ -89,6 +100,7 @@ const catalystOutcomes = [
 
 export function CatalystOutcomesSlide({
   className = "",
+  isAnimated = true,
   onAdvance,
   step = 0,
 }: CatalystOutcomesSlideProps) {
@@ -105,6 +117,7 @@ export function CatalystOutcomesSlide({
     >
       {catalystOutcomes.map(({ id: rowId, iconUrl, outcome, source }, index) => {
         const isRevealed = index < step;
+        const isNewestReveal = isAnimated && isRevealed && index === step - 1;
         const gradientId = `catalyst-outcomes-gradient-${rowId}-${id}`;
 
         return (
@@ -142,7 +155,7 @@ export function CatalystOutcomesSlide({
               <motion.line
                 animate={{ opacity: isRevealed ? 1 : 0, x2: isRevealed ? 100 : 0 }}
                 className="catalyst-outcomes-slide__connector-line"
-                initial={false}
+                initial={isNewestReveal ? { opacity: 0, x2: 0 } : false}
                 stroke={`url(#${gradientId})`}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
                 vectorEffect="non-scaling-stroke"
@@ -154,7 +167,7 @@ export function CatalystOutcomesSlide({
               <motion.line
                 animate={{ opacity: isRevealed ? 1 : 0, scaleY: isRevealed ? 1 : 0 }}
                 className="catalyst-outcomes-slide__connector-tick"
-                initial={false}
+                initial={isNewestReveal ? { opacity: 0, scaleY: 0 } : false}
                 stroke={`url(#${gradientId})`}
                 transition={{
                   delay: isRevealed ? 0.42 : 0,
@@ -176,7 +189,11 @@ export function CatalystOutcomesSlide({
               }}
               aria-hidden={!isRevealed}
               className="catalyst-outcomes-slide__outcome"
-              initial={false}
+              initial={isNewestReveal ? {
+                opacity: 0,
+                x: -18,
+                y: "-50%",
+              } : false}
               transition={{
                 delay: isRevealed ? 0.44 : 0,
                 duration: 0.28,

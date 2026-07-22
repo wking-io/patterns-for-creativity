@@ -1,13 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DeckDirection } from "./navigation";
 import {
+  acceptPresentationInteractionState,
+  acceptPresentationPortalMaskState,
   acceptPresentationState,
+  acceptPresentationScratchState,
   createAudienceBlackoutUrl,
   createAudienceConnectionState,
   createAudienceDisplayUrl,
   createAudiencePresenceMessage,
+  createPresentationInteractionCursor,
+  createPresentationInteractionMessage,
+  createPresentationPortalMaskCursor,
+  createPresentationPortalMaskMessage,
   createPresentationStateCursor,
   createPresentationStateMessage,
+  createPresentationScratchCursor,
+  createPresentationScratchMessage,
+  createPresentationScratchSnapshot,
   deliverPresentationMessage,
   getInitialAudienceBlackout,
   parsePresentationMessage,
@@ -18,7 +28,13 @@ import type {
   AudienceConnectionEvent,
   DeckViewMode,
   PresentationMessage,
+  PresentationInteractionMessage,
+  PresentationInteractionState,
+  PresentationPortalMaskMessage,
+  PresentationScratchMessage,
   PresentationStateMessage,
+  PortalMaskRect,
+  ScratchSegment,
 } from "./presentation-sync";
 
 const heartbeatIntervalMs = 1_500;
@@ -29,6 +45,12 @@ type UsePresentationSessionOptions = {
   frameCount: number;
   frameIndex: number;
   onAudienceState: (message: PresentationStateMessage) => void;
+  onAudienceInteractionState: (message: PresentationInteractionMessage) => void;
+  onAudienceScratchState: (message: PresentationScratchMessage) => void;
+  onAudiencePortalMaskState: (message: PresentationPortalMaskMessage) => void;
+  portalMaskRect?: PortalMaskRect;
+  interactionState?: PresentationInteractionState;
+  scratchSegments: readonly ScratchSegment[];
   viewMode: DeckViewMode;
 };
 
@@ -37,6 +59,12 @@ export function usePresentationSession({
   frameCount,
   frameIndex,
   onAudienceState,
+  onAudienceInteractionState,
+  onAudienceScratchState,
+  onAudiencePortalMaskState,
+  portalMaskRect,
+  interactionState,
+  scratchSegments,
   viewMode,
 }: UsePresentationSessionOptions) {
   const [audienceConnection, setAudienceConnection] = useState(
@@ -50,6 +78,14 @@ export function usePresentationSession({
   const presenterSessionIdRef = useRef(createPeerId("presenter"));
   const audienceIdRef = useRef(createPeerId("audience"));
   const revisionRef = useRef(0);
+  const scratchRevisionRef = useRef(0);
+  const portalMaskRevisionRef = useRef(0);
+  const interactionRevisionRef = useRef(0);
+  const scratchSegmentsRef = useRef<readonly ScratchSegment[]>(scratchSegments);
+  const portalMaskRectRef = useRef<PortalMaskRect | undefined>(portalMaskRect);
+  const interactionStateRef = useRef<PresentationInteractionState | undefined>(
+    interactionState,
+  );
   const latestStateRef = useRef(createPresentationStateMessage(
     presenterSessionIdRef.current,
     revisionRef.current,
@@ -58,6 +94,9 @@ export function usePresentationSession({
     false,
   ));
   const cursorRef = useRef(createPresentationStateCursor());
+  const scratchCursorRef = useRef(createPresentationScratchCursor());
+  const portalMaskCursorRef = useRef(createPresentationPortalMaskCursor());
+  const interactionCursorRef = useRef(createPresentationInteractionCursor());
 
   const updateAudienceConnection = useCallback((event: AudienceConnectionEvent) => {
     setAudienceConnection((current) => reduceAudienceConnection(current, event));
@@ -98,6 +137,25 @@ export function usePresentationSession({
 
         if (message.type === "audience-ready") {
           sendMessage(latestStateRef.current);
+          sendMessage(createPresentationScratchSnapshot(
+            presenterSessionIdRef.current,
+            scratchRevisionRef.current,
+            scratchSegmentsRef.current,
+          ));
+          if (portalMaskRectRef.current) {
+            sendMessage(createPresentationPortalMaskMessage(
+              presenterSessionIdRef.current,
+              portalMaskRevisionRef.current,
+              portalMaskRectRef.current,
+            ));
+          }
+          if (interactionStateRef.current) {
+            sendMessage(createPresentationInteractionMessage(
+              presenterSessionIdRef.current,
+              interactionRevisionRef.current,
+              interactionStateRef.current,
+            ));
+          }
         }
       } else if (message.type === "audience-closing") {
         updateAudienceConnection({
@@ -109,7 +167,50 @@ export function usePresentationSession({
       return;
     }
 
-    if (viewMode !== "audience" || message.type !== "presentation-state") {
+    if (viewMode !== "audience") {
+      return;
+    }
+
+    if (message.type === "presentation-scratch") {
+      const result = acceptPresentationScratchState(scratchCursorRef.current, message);
+      scratchCursorRef.current = result.cursor;
+
+      if (result.accepted) {
+        onAudienceScratchState(message);
+      }
+
+      return;
+    }
+
+    if (message.type === "presentation-portal-mask") {
+      const result = acceptPresentationPortalMaskState(
+        portalMaskCursorRef.current,
+        message,
+      );
+      portalMaskCursorRef.current = result.cursor;
+
+      if (result.accepted) {
+        onAudiencePortalMaskState(message);
+      }
+
+      return;
+    }
+
+    if (message.type === "presentation-interaction") {
+      const result = acceptPresentationInteractionState(
+        interactionCursorRef.current,
+        message,
+      );
+      interactionCursorRef.current = result.cursor;
+
+      if (result.accepted) {
+        onAudienceInteractionState(message);
+      }
+
+      return;
+    }
+
+    if (message.type !== "presentation-state") {
       return;
     }
 
@@ -125,7 +226,28 @@ export function usePresentationSession({
       );
       onAudienceState(message);
     }
-  }, [frameCount, onAudienceState, sendMessage, updateAudienceConnection, viewMode]);
+  }, [
+    frameCount,
+    onAudienceInteractionState,
+    onAudiencePortalMaskState,
+    onAudienceScratchState,
+    onAudienceState,
+    sendMessage,
+    updateAudienceConnection,
+    viewMode,
+  ]);
+
+  useEffect(() => {
+    scratchSegmentsRef.current = scratchSegments;
+  }, [scratchSegments]);
+
+  useEffect(() => {
+    portalMaskRectRef.current = portalMaskRect;
+  }, [portalMaskRect]);
+
+  useEffect(() => {
+    interactionStateRef.current = interactionState;
+  }, [interactionState]);
 
   useEffect(() => {
     if (viewMode === "deck") {
@@ -182,6 +304,18 @@ export function usePresentationSession({
       channelRef.current = undefined;
     };
   }, [handleIncomingMessage, sendMessage, viewMode]);
+
+  useEffect(() => {
+    if (viewMode !== "presenter") {
+      return;
+    }
+
+    sendMessage(createPresentationScratchSnapshot(
+      presenterSessionIdRef.current,
+      scratchRevisionRef.current,
+      scratchSegmentsRef.current,
+    ));
+  }, [sendMessage, viewMode]);
 
   useEffect(() => {
     if (viewMode !== "presenter") {
@@ -272,8 +406,54 @@ export function usePresentationSession({
     ));
   }, [audienceConnection.status, viewMode]);
 
+  const broadcastScratchSegments = useCallback((segments: readonly ScratchSegment[]) => {
+    if (viewMode !== "presenter" || segments.length === 0) {
+      return;
+    }
+
+    scratchRevisionRef.current += 1;
+    scratchSegmentsRef.current = [...scratchSegmentsRef.current, ...segments];
+    sendMessage(createPresentationScratchMessage(
+      presenterSessionIdRef.current,
+      scratchRevisionRef.current,
+      "append",
+      segments,
+    ));
+  }, [sendMessage, viewMode]);
+
+  const broadcastPortalMaskRect = useCallback((rect: PortalMaskRect) => {
+    if (viewMode !== "presenter") {
+      return;
+    }
+
+    portalMaskRevisionRef.current += 1;
+    portalMaskRectRef.current = rect;
+    sendMessage(createPresentationPortalMaskMessage(
+      presenterSessionIdRef.current,
+      portalMaskRevisionRef.current,
+      rect,
+    ));
+  }, [sendMessage, viewMode]);
+
+  const broadcastInteractionState = useCallback((state: PresentationInteractionState) => {
+    if (viewMode !== "presenter") {
+      return;
+    }
+
+    interactionRevisionRef.current += 1;
+    interactionStateRef.current = state;
+    sendMessage(createPresentationInteractionMessage(
+      presenterSessionIdRef.current,
+      interactionRevisionRef.current,
+      state,
+    ));
+  }, [sendMessage, viewMode]);
+
   return {
     audienceStatus: audienceConnection.status,
+    broadcastInteractionState,
+    broadcastPortalMaskRect,
+    broadcastScratchSegments,
     isAudienceBlackout,
     openAudienceDisplay,
     toggleAudienceBlackout,

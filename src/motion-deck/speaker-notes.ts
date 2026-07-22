@@ -1,6 +1,6 @@
 export const speakerNotesFileVersion = 1;
 export const speakerNotesDeckId = "patterns-for-creativity";
-export const defaultSpeakerNotesFileName = "patterns-for-creativity-speaker-notes.json";
+export const speakerNotesSaveEndpoint = "/__patterns-for-creativity/speaker-notes";
 
 export type SpeakerNote = {
   body: string;

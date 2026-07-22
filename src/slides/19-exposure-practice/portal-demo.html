@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive portal</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        padding: 0;
+        width: 100%;
+      }
+
+      body {
+        background: #f3f1f1;
+        display: flex;
+        position: relative;
+      }
+
+      .main,
+      .crazy {
+        display: block;
+        height: auto;
+        left: 0;
+        position: absolute;
+        top: 0;
+        width: 100%;
+      }
+
+      .crazy {
+        contain: layout paint style;
+        mask: url("#portalMask");
+        pointer-events: none;
+        -webkit-mask: url("#portalMask");
+        z-index: 1000;
+      }
+
+      .portal-controls {
+        cursor: move;
+        pointer-events: auto;
+        position: absolute;
+        touch-action: none;
+        user-select: none;
+        z-index: 1001;
+      }
+
+      .portal-frame {
+        background: rgba(0, 0, 0, 0.001);
+        border: 1px solid #dad1c8;
+        border-radius: 0;
+        cursor: move;
+        position: absolute;
+        touch-action: none;
+      }
+
+      .resize-handle-wrapper {
+        cursor: pointer;
+        height: 15px;
+        position: absolute;
+        width: 15px;
+      }
+
+      .resize-handle-wrapper::before {
+        background: #2d2d2d;
+        content: "";
+        height: 1px;
+        left: 12px;
+        position: absolute;
+        top: 6px;
+        width: 4px;
+      }
+
+      .resize-handle {
+        pointer-events: none;
+      }
+
+      .resize-handle::before {
+        background: #2d2d2d;
+        content: "";
+        height: 4px;
+        left: 6px;
+        position: absolute;
+        top: 12px;
+        width: 1px;
+      }
+
+      .resize-handle-wrapper::after {
+        background: #dad1c8;
+        content: "";
+        height: 1px;
+        left: 2px;
+        position: absolute;
+        top: 6px;
+        width: 4px;
+      }
+
+      .resize-handle::after {
+        background: #dad1c8;
+        content: "";
+        height: 4px;
+        left: 6px;
+        position: absolute;
+        top: 2px;
+        width: 1px;
+      }
+
+      .resize-handle-wrapper.nw {
+        cursor: nw-resize;
+        left: -7px;
+        top: -7px;
+      }
+
+      .resize-handle-wrapper.ne {
+        cursor: ne-resize;
+        right: -7px;
+        top: -7px;
+        transform: rotate(90deg);
+      }
+
+      .resize-handle-wrapper.sw {
+        bottom: -7px;
+        cursor: sw-resize;
+        left: -7px;
+        transform: rotate(-90deg);
+      }
+
+      .resize-handle-wrapper.se {
+        bottom: -7px;
+        cursor: se-resize;
+        right: -7px;
+        transform: rotate(180deg);
+      }
+    </style>
+  </head>
+  <body>
+    <svg aria-hidden="true" height="0" style="position: absolute" width="0">
+      <defs>
+        <mask id="portalMask">
+          <rect fill="black" height="100%" width="100%" />
+          <rect id="portalShape" fill="white" height="150" width="200" x="400" y="300" />
+        </mask>
+      </defs>
+    </svg>
+
+    <img
+      alt=""
+      class="main"
+      draggable="false"
+      src="https://pub-18397ba39f4d4155be074b11c8200b7c.r2.dev/main.png"
+    />
+    <img
+      alt=""
+      class="crazy"
+      draggable="false"
+      src="https://pub-18397ba39f4d4155be074b11c8200b7c.r2.dev/crazy.png"
+    />
+
+    <div class="portal-controls" id="portalControls">
+      <div class="portal-frame" id="portalFrame">
+        <div class="resize-handle-wrapper nw" data-handle="nw">
+          <div class="resize-handle"></div>
+        </div>
+        <div class="resize-handle-wrapper ne" data-handle="ne">
+          <div class="resize-handle"></div>
+        </div>
+        <div class="resize-handle-wrapper sw" data-handle="sw">
+          <div class="resize-handle"></div>
+        </div>
+        <div class="resize-handle-wrapper se" data-handle="se">
+          <div class="resize-handle"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const REF = {
+        width: 1037,
+        rect: { x: 364, y: 172, w: 542, h: 252 },
+      };
+      const LIMITS = { minW: 60, minH: 45 };
+      const MESSAGE_VERSION = 1;
+      const DOM = {
+        portalShape: document.getElementById("portalShape"),
+        portalControls: document.getElementById("portalControls"),
+        portalFrame: document.getElementById("portalFrame"),
+        resizeHandles: document.querySelectorAll(".resize-handle-wrapper"),
+      };
+
+      const ratios = {
+        x: REF.rect.x / REF.width,
+        y: REF.rect.y / REF.width,
+        w: REF.rect.w / REF.width,
+        h: REF.rect.h / REF.width,
+      };
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+
+      function getViewport() {
+        return {
+          width: window.innerWidth,
+          height: Math.max(
+            document.documentElement.clientHeight,
+            document.body.clientHeight,
+            window.innerHeight || 0,
+          ),
+        };
+      }
+
+      function clampRect(rect) {
+        const { width: viewportWidth, height: viewportHeight } = getViewport();
+        const width = clamp(rect.w, LIMITS.minW, viewportWidth);
+        const height = clamp(rect.h, LIMITS.minH, viewportHeight);
+
+        return {
+          x: clamp(rect.x, 0, viewportWidth - width),
+          y: clamp(rect.y, 0, viewportHeight - height),
+          w: width,
+          h: height,
+        };
+      }
+
+      function normalizeRect(rect) {
+        const viewport = getViewport();
+        const width = clamp(rect.w / viewport.width, 0, 1);
+        const height = clamp(rect.h / viewport.height, 0, 1);
+
+        return {
+          x: clamp(rect.x / viewport.width, 0, 1 - width),
+          y: clamp(rect.y / viewport.height, 0, 1 - height),
+          width,
+          height,
+        };
+      }
+
+      function denormalizeRect(rect) {
+        const viewport = getViewport();
+
+        return {
+          x: rect.x * viewport.width,
+          y: rect.y * viewport.height,
+          w: rect.width * viewport.width,
+          h: rect.height * viewport.height,
+        };
+      }
+
+      function isNormalizedRect(value) {
+        if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+        const coordinates = [value.x, value.y, value.width, value.height];
+
+        return coordinates.every((coordinate) => (
+          typeof coordinate === "number" &&
+          Number.isFinite(coordinate) &&
+          coordinate >= 0 &&
+          coordinate <= 1
+        )) &&
+          value.width > 0 &&
+          value.height > 0 &&
+          value.x + value.width <= 1 &&
+          value.y + value.height <= 1;
+      }
+
+      function postMaskMessage(type, rect) {
+        window.parent.postMessage({
+          type,
+          version: MESSAGE_VERSION,
+          rect: normalizeRect(rect),
+        }, "*");
+      }
+
+      let pendingPointer;
+      let pointerFrame = 0;
+
+      function queuePointerMessage(pointer) {
+        pendingPointer = pointer;
+        if (pointerFrame) return;
+
+        pointerFrame = requestAnimationFrame(() => {
+          const message = {
+            type: "portal-pointer-change",
+            version: MESSAGE_VERSION,
+          };
+
+          if (pendingPointer) {
+            message.pointer = pendingPointer;
+          }
+
+          window.parent.postMessage(message, "*");
+          pointerFrame = 0;
+        });
+      }
+
+      function scaleRectFromWidth(width) {
+        return {
+          x: ratios.x * width,
+          y: ratios.y * width,
+          w: ratios.w * width,
+          h: ratios.h * width,
+        };
+      }
+
+      function applyHandleResize(handle, start, deltaX, deltaY) {
+        const { x, y, w, h } = start;
+
+        switch (handle) {
+          case "nw":
+            return { x: x + deltaX, y: y + deltaY, w: w - deltaX, h: h - deltaY };
+          case "ne":
+            return { x, y: y + deltaY, w: w + deltaX, h: h - deltaY };
+          case "sw":
+            return { x: x + deltaX, y, w: w - deltaX, h: h + deltaY };
+          case "se":
+            return { x, y, w: w + deltaX, h: h + deltaY };
+          default:
+            return start;
+        }
+      }
+
+      const initialRect = scaleRectFromWidth(window.innerWidth);
+      let state = {
+        dirty: true,
+        handle: null,
+        lastViewportWidth: window.innerWidth,
+        mode: "idle",
+        notifyParent: false,
+        rect: initialRect,
+        startPointer: { x: 0, y: 0 },
+        startRect: initialRect,
+      };
+
+      function update(patch, notifyParent = false) {
+        state = {
+          ...state,
+          ...patch,
+          notifyParent: state.notifyParent || notifyParent,
+        };
+        scheduleRender();
+      }
+
+      function scheduleRender() {
+        if (state.dirty) return;
+        state.dirty = true;
+        requestAnimationFrame(render);
+      }
+
+      function render() {
+        if (!state.dirty) return;
+        state.dirty = false;
+
+        const rect = clampRect(state.rect);
+        const shouldNotifyParent = state.notifyParent;
+        state = { ...state, notifyParent: false, rect };
+
+        DOM.portalShape.setAttribute("x", rect.x);
+        DOM.portalShape.setAttribute("y", rect.y);
+        DOM.portalShape.setAttribute("width", rect.w);
+        DOM.portalShape.setAttribute("height", rect.h);
+
+        DOM.portalControls.style.left = rect.x + "px";
+        DOM.portalControls.style.top = rect.y + "px";
+        DOM.portalFrame.style.width = rect.w - 1 + "px";
+        DOM.portalFrame.style.height = rect.h - 1 + "px";
+        DOM.resizeHandles.forEach((handle) => {
+          handle.style.display = "block";
+        });
+
+        if (shouldNotifyParent) {
+          postMaskMessage("portal-mask-change", rect);
+        }
+      }
+
+      function onPointerDown(event) {
+        const handleElement = event.target.closest(".resize-handle-wrapper");
+        const handle = handleElement ? handleElement.dataset.handle : null;
+
+        update({
+          mode: handle ? "resize" : "drag",
+          handle,
+          startPointer: { x: event.clientX, y: event.clientY },
+          startRect: state.rect,
+        });
+
+        DOM.portalControls.setPointerCapture?.(event.pointerId);
+        document.body.style.userSelect = "none";
+        DOM.portalFrame.style.cursor = handle ? "nwse-resize" : "grabbing";
+        event.preventDefault();
+      }
+
+      function onPointerMove(event) {
+        if (state.mode === "idle") return;
+
+        const deltaX = event.clientX - state.startPointer.x;
+        const deltaY = event.clientY - state.startPointer.y;
+
+        if (state.mode === "drag") {
+          update({
+            rect: {
+              x: state.startRect.x + deltaX,
+              y: state.startRect.y + deltaY,
+              w: state.startRect.w,
+              h: state.startRect.h,
+            },
+          }, true);
+        } else {
+          const resized = applyHandleResize(
+            state.handle,
+            state.startRect,
+            deltaX,
+            deltaY,
+          );
+          const width = Math.max(resized.w, LIMITS.minW);
+          const height = Math.max(resized.h, LIMITS.minH);
+          let x = resized.x;
+          let y = resized.y;
+
+          if (width !== resized.w && (state.handle === "nw" || state.handle === "sw")) {
+            x = state.startRect.x + (state.startRect.w - width);
+          }
+          if (height !== resized.h && (state.handle === "nw" || state.handle === "ne")) {
+            y = state.startRect.y + (state.startRect.h - height);
+          }
+
+          update({ rect: { x, y, w: width, h: height } }, true);
+        }
+
+        event.preventDefault();
+      }
+
+      function endInteraction() {
+        if (state.mode === "idle") return;
+        update({ mode: "idle", handle: null });
+        DOM.portalFrame.style.cursor = "move";
+        document.body.style.userSelect = "";
+      }
+
+      DOM.portalControls.addEventListener("pointerdown", onPointerDown);
+      window.addEventListener("pointermove", onPointerMove, { passive: false });
+      document.addEventListener("pointermove", (event) => {
+        const viewport = getViewport();
+        queuePointerMessage({
+          x: clamp(event.clientX / viewport.width, 0, 1),
+          y: clamp(event.clientY / viewport.height, 0, 1),
+        });
+      }, { passive: true });
+      document.addEventListener("pointerleave", () => queuePointerMessage(undefined));
+      window.addEventListener("mouseout", (event) => {
+        if (!event.relatedTarget) queuePointerMessage(undefined);
+      });
+      window.addEventListener("pointerup", endInteraction);
+      window.addEventListener("pointercancel", endInteraction);
+      window.addEventListener("message", (event) => {
+        const message = event.data;
+
+        if (
+          event.source !== window.parent ||
+          !message ||
+          message.type !== "portal-mask-state" ||
+          message.version !== MESSAGE_VERSION ||
+          !isNormalizedRect(message.rect)
+        ) {
+          return;
+        }
+
+        update({ rect: denormalizeRect(message.rect) });
+      });
+
+      let resizeDebounce = 0;
+      window.addEventListener("resize", () => {
+        clearTimeout(resizeDebounce);
+        resizeDebounce = window.setTimeout(() => {
+          const previousWidth = state.lastViewportWidth || 1;
+          const nextWidth = window.innerWidth || previousWidth;
+          const factor = nextWidth / previousWidth;
+
+          update({
+            lastViewportWidth: nextWidth,
+            rect: {
+              x: state.rect.x * factor,
+              y: state.rect.y * factor,
+              w: state.rect.w * factor,
+              h: state.rect.h * factor,
+            },
+          });
+        }, 100);
+      });
+
+      document.addEventListener(
+        "contextmenu",
+        (event) => {
+          if (state.mode !== "idle") event.preventDefault();
+        },
+        { passive: false },
+      );
+      DOM.portalControls.addEventListener(
+        "touchmove",
+        (event) => event.preventDefault(),
+        { passive: false },
+      );
+
+      render();
+      postMaskMessage("portal-mask-ready", state.rect);
+    </script>
+  </body>
+</html>

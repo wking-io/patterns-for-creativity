@@ -10,7 +10,7 @@
     "src",
     "tests",
     "vite.config.ts",
-    "offline-cache-plugin.ts"
+    "offline-cache-plugin.ts",
+    "speaker-notes-plugin.ts"
   ]
 }
-

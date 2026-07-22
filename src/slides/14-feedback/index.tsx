@@ -1,19 +1,25 @@
 import { motion } from "motion/react";
 import type { Transition, Variants } from "motion/react";
+import exposureTextUrl from "../13-catalyst/exposure-text.svg";
+import feedbackTextUrl from "../13-catalyst/feedback-text.svg";
 import bulletUrl from "./bullet.svg";
 import complaintsTextUrl from "./complaints-text.svg";
+import exposureInnerUrl from "./exposure-inner.svg";
+import feedbackInnerUrl from "./feedback-inner.svg";
+import frameUrl from "./frame.svg";
 import logsBugsTextUrl from "./logs-bugs-text.svg";
 import metricsTextUrl from "./metrics-text.svg";
+import peopleInnerUrl from "./people-inner.svg";
 import peopleTextUrl from "./people-text.svg";
-import peopleUrl from "./people.svg";
 import requestsTextUrl from "./requests-text.svg";
+import systemsInnerUrl from "./systems-inner.svg";
 import systemsTextUrl from "./systems-text.svg";
-import systemsUrl from "./systems.svg";
 
 export type FeedbackSlideVariant = "initial" | "people" | "complete";
 
 type FeedbackSlideProps = {
   className?: string;
+  isAnimated?: boolean;
   variant?: FeedbackSlideVariant;
 };
 
@@ -35,11 +41,13 @@ const detailVariants: Variants = {
 
 export function FeedbackSlide({
   className = "",
+  isAnimated = true,
   variant = "initial",
 }: FeedbackSlideProps) {
   const isExpanded = variant !== "initial";
   const isLeftVisible = variant === "people" || variant === "complete";
   const isRightVisible = variant === "complete";
+  const isEntryMorph = isAnimated && variant === "initial";
 
   return (
     <div
@@ -47,17 +55,25 @@ export function FeedbackSlide({
       data-feedback-variant={variant}
     >
       <FeedbackHeader
-        iconUrl={peopleUrl}
+        iconUrl={peopleInnerUrl}
+        isEntryMorph={isEntryMorph}
         isExpanded={isExpanded}
         label="People"
         labelUrl={peopleTextUrl}
+        originIconUrl={feedbackInnerUrl}
+        originLabel="Feedback"
+        originLabelUrl={feedbackTextUrl}
         side="people"
       />
       <FeedbackHeader
-        iconUrl={systemsUrl}
+        iconUrl={systemsInnerUrl}
+        isEntryMorph={isEntryMorph}
         isExpanded={isExpanded}
         label="Systems"
         labelUrl={systemsTextUrl}
+        originIconUrl={exposureInnerUrl}
+        originLabel="Exposure"
+        originLabelUrl={exposureTextUrl}
         side="systems"
       />
 
@@ -99,60 +115,133 @@ export function FeedbackSlide({
 
 type FeedbackHeaderProps = {
   iconUrl: string;
+  isEntryMorph: boolean;
   isExpanded: boolean;
   label: string;
   labelUrl: string;
+  originIconUrl: string;
+  originLabel: string;
+  originLabelUrl: string;
   side: "people" | "systems";
 };
 
 function FeedbackHeader({
   iconUrl,
+  isEntryMorph,
   isExpanded,
   label,
   labelUrl,
+  originIconUrl,
+  originLabel,
+  originLabelUrl,
   side,
 }: FeedbackHeaderProps) {
+  const initialLeft = side === "people" ? "32.68%" : "67.05%";
+  const originLeft = side === "people" ? "20.35%" : "80%";
+  const expandedIconLeft = side === "people" ? "11.9%" : "58%";
+  const expandedLabelLeft = side === "people" ? "25.33%" : "74.48%";
+  const inwardOffset = side === "people" ? 24 : -24;
+  const outwardOffset = -inwardOffset;
+
   return (
     <div className={`feedback-slide__header feedback-slide__header--${side}`}>
-      <motion.img
-        alt=""
+      <motion.div
         animate={isExpanded ? "expanded" : "initial"}
         aria-hidden="true"
         className="feedback-slide__header-icon"
-        draggable={false}
-        initial={false}
-        src={iconUrl}
+        initial={isEntryMorph ? {
+          left: originLeft,
+          top: "35.8%",
+          width: "7.06%",
+        } : false}
         transition={headerTransition}
         variants={{
           expanded: {
-            left: side === "people" ? "11.9%" : "58%",
+            left: expandedIconLeft,
             top: "26.17%",
+            width: "7.12%",
           },
           initial: {
-            left: side === "people" ? "32.68%" : "67.05%",
+            left: initialLeft,
             top: "35.8%",
+            width: "7.12%",
           },
         }}
-      />
-      <motion.img
-        alt={label}
-        animate={isExpanded ? "expanded" : "initial"}
-        className="feedback-slide__header-label"
-        draggable={false}
-        initial={false}
-        src={labelUrl}
-        transition={headerTransition}
-        variants={{
-          expanded: {
-            left: side === "people" ? "25.33%" : "74.48%",
-            top: "28.8%",
-          },
-          initial: {
-            left: side === "people" ? "32.68%" : "67.05%",
-            top: "58%",
-          },
-        }}
-      />
+      >
+        <img
+          alt=""
+          aria-hidden="true"
+          className="feedback-slide__header-frame"
+          draggable={false}
+          src={frameUrl}
+        />
+        <motion.img
+          alt=""
+          animate={{ opacity: 1, x: 0 }}
+          aria-hidden="true"
+          className="feedback-slide__header-symbol"
+          draggable={false}
+          initial={isEntryMorph ? { opacity: 0, x: inwardOffset } : false}
+          src={iconUrl}
+          transition={{ delay: 0.14, duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+        />
+        {isEntryMorph ? (
+          <motion.img
+            alt=""
+            animate={{ opacity: 0, x: outwardOffset }}
+            aria-hidden="true"
+            className="feedback-slide__header-symbol"
+            draggable={false}
+            initial={{ opacity: 1, x: 0 }}
+            src={originIconUrl}
+            transition={{ delay: 0.14, duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+          />
+        ) : null}
+      </motion.div>
+      <motion.div
+        animate={{ opacity: 1, x: 0 }}
+        className="feedback-slide__header-label-drift"
+        initial={isEntryMorph ? { opacity: 0, x: inwardOffset } : false}
+        transition={{ delay: 0.14, duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+      >
+        <motion.img
+          alt={label}
+          animate={isExpanded ? "expanded" : "initial"}
+          className="feedback-slide__header-label"
+          draggable={false}
+          initial={isEntryMorph ? { left: originLeft, top: "58%" } : false}
+          src={labelUrl}
+          transition={headerTransition}
+          variants={{
+            expanded: {
+              left: expandedLabelLeft,
+              top: "28.8%",
+            },
+            initial: {
+              left: initialLeft,
+              top: "58%",
+            },
+          }}
+        />
+      </motion.div>
+      {isEntryMorph ? (
+        <motion.div
+          animate={{ opacity: 0, x: outwardOffset }}
+          className="feedback-slide__header-label-drift"
+          initial={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.14, duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+        >
+          <motion.img
+            alt={originLabel}
+            animate={{ left: initialLeft, top: "58%" }}
+            className={`feedback-slide__header-label feedback-slide__header-label--origin feedback-slide__header-label--origin-${side}`}
+            draggable={false}
+            initial={{ left: originLeft, top: "58%" }}
+            src={originLabelUrl}
+            transition={headerTransition}
+          />
+        </motion.div>
+      ) : null}
     </div>
   );
 }

@@ -12,8 +12,6 @@ import {
   selectSessionNote,
 } from "../src/motion-deck/notes-session.js";
 import { getMotionStageBehavior } from "../src/motion-deck/stage-mode.js";
-import { saveSpeakerNotesFile } from "../src/motion-deck/speaker-notes-files.js";
-import type { WritableNotesFileHandle } from "../src/motion-deck/speaker-notes-files.js";
 
 const emptyDocument = createEmptySpeakerNotesFile();
 const withCoverNote = updateSpeakerNote(emptyDocument, "cover", {
@@ -115,43 +113,23 @@ assert.strictEqual(session.document, savedDocument);
 assert.deepEqual(getMotionStageBehavior("preview"), {
   animateContent: false,
   animateLayout: false,
+  audioEnabled: false,
   autoAdvance: false,
   autoplayMedia: false,
 });
 assert.deepEqual(getMotionStageBehavior("live"), {
   animateContent: true,
   animateLayout: true,
+  audioEnabled: true,
   autoAdvance: true,
   autoplayMedia: true,
 });
-
-let writtenNotes = "";
-let didCloseWritable = false;
-const writableHandle: WritableNotesFileHandle = {
-  name: "talk-notes.json",
-  getFile: async () => new File([], "talk-notes.json"),
-  createWritable: async () => ({
-    write: async (contents) => {
-      writtenNotes = contents;
-    },
-    close: async () => {
-      didCloseWritable = true;
-    },
-  }),
-};
-const saveResult = await saveSpeakerNotesFile(
-  withTwoNotes,
-  writableHandle,
-  "ignored.json",
-  {} as Window,
-);
-
-assert.equal(writtenNotes, serializeSpeakerNotesFile(withTwoNotes));
-assert.equal(didCloseWritable, true);
-assert.deepEqual(saveResult, {
-  fileName: "talk-notes.json",
-  handle: writableHandle,
-  mode: "overwrite",
+assert.deepEqual(getMotionStageBehavior("presenter"), {
+  animateContent: true,
+  animateLayout: true,
+  audioEnabled: false,
+  autoAdvance: true,
+  autoplayMedia: true,
 });
 
 console.log("speaker notes tests passed");

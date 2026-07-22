@@ -6,6 +6,14 @@ import { PresenterView } from "./PresenterView";
 import {
   getDeckViewMode,
 } from "./presentation-sync";
+import type {
+  PortalMaskRect,
+  PresentationInteractionMessage,
+  PresentationInteractionState,
+  PresentationPortalMaskMessage,
+  PresentationScratchMessage,
+  ScratchSegment,
+} from "./presentation-sync";
 import { usePresentationSession } from "./usePresentationSession";
 import {
   createFrameHash,
@@ -25,6 +33,9 @@ export function MotionDeckApp() {
     getInitialDeckNavigationState(window.location.hash, frameCount)
   ));
   const [isGridVisible, setIsGridVisible] = useState(false);
+  const [scratchSegments, setScratchSegments] = useState<ScratchSegment[]>([]);
+  const [portalMaskRect, setPortalMaskRect] = useState<PortalMaskRect>();
+  const [interactionState, setInteractionState] = useState<PresentationInteractionState>();
   const touchStartRef = useRef<{ x: number; y: number } | undefined>(undefined);
   const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[0];
   const viewMode = getDeckViewMode(window.location.search);
@@ -55,8 +66,27 @@ export function MotionDeckApp() {
     });
   }, []);
 
+  const applyAudienceScratchState = useCallback((message: PresentationScratchMessage) => {
+    setScratchSegments((current) => (
+      message.mode === "replace"
+        ? message.segments
+        : [...current, ...message.segments]
+    ));
+  }, []);
+
+  const applyAudiencePortalMaskState = useCallback((message: PresentationPortalMaskMessage) => {
+    setPortalMaskRect(message.rect);
+  }, []);
+
+  const applyAudienceInteractionState = useCallback((message: PresentationInteractionMessage) => {
+    setInteractionState(message.state);
+  }, []);
+
   const {
     audienceStatus,
+    broadcastInteractionState,
+    broadcastPortalMaskRect,
+    broadcastScratchSegments,
     isAudienceBlackout,
     openAudienceDisplay,
     toggleAudienceBlackout,
@@ -64,9 +94,30 @@ export function MotionDeckApp() {
     direction,
     frameCount,
     frameIndex,
+    interactionState,
+    onAudienceInteractionState: applyAudienceInteractionState,
+    onAudiencePortalMaskState: applyAudiencePortalMaskState,
+    onAudienceScratchState: applyAudienceScratchState,
     onAudienceState: applyAudienceState,
+    portalMaskRect,
+    scratchSegments,
     viewMode,
   });
+
+  const handleScratchSegments = useCallback((segments: ScratchSegment[]) => {
+    setScratchSegments((current) => [...current, ...segments]);
+    broadcastScratchSegments(segments);
+  }, [broadcastScratchSegments]);
+
+  const handlePortalMaskRect = useCallback((rect: PortalMaskRect) => {
+    setPortalMaskRect(rect);
+    broadcastPortalMaskRect(rect);
+  }, [broadcastPortalMaskRect]);
+
+  const handleInteractionState = useCallback((state: PresentationInteractionState) => {
+    setInteractionState(state);
+    broadcastInteractionState(state);
+  }, [broadcastInteractionState]);
 
   const controls = useMemo(() => ({
     goNext: () => goToFrame(frameIndex + 1),
@@ -187,8 +238,13 @@ export function MotionDeckApp() {
           isGridVisible={isGridVisible}
           onNext={controls.goNext}
           onOpenAudience={openAudienceDisplay}
-          onPrevious={controls.goPrevious}
+          onInteractionState={handleInteractionState}
+          onPortalMaskRect={handlePortalMaskRect}
+          onScratchSegments={handleScratchSegments}
           onToggleAudienceBlackout={toggleAudienceBlackout}
+          portalMaskRect={portalMaskRect}
+          interactionState={interactionState}
+          scratchSegments={scratchSegments}
         />
       ) : isAudienceView && isAudienceBlackout ? (
         <main aria-label="Audience display blacked out" className="audience-blackout" />
@@ -204,7 +260,13 @@ export function MotionDeckApp() {
               frame={frame}
               isGridVisible={isGridVisible}
               mode={isAudienceView ? "audience" : "live"}
+              interactionState={interactionState}
               onAdvance={isAudienceView ? undefined : controls.goNext}
+              onPortalMaskRect={isAudienceView ? undefined : handlePortalMaskRect}
+              onInteractionState={isAudienceView ? undefined : handleInteractionState}
+              onScratchSegments={isAudienceView ? undefined : handleScratchSegments}
+              scratchSegments={scratchSegments}
+              portalMaskRect={portalMaskRect}
             />
           </div>
         </main>

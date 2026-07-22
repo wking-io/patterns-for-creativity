@@ -1,0 +1,9 @@
+<svg width="250" height="250" viewBox="0 0 250 250" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M218 0C235.673 0 250 14.3269 250 32V250H32C14.3269 250 0 235.673 0 218V0H218Z" fill="url(#feedback-frame-gradient)"/>
+  <defs>
+    <linearGradient id="feedback-frame-gradient" x1="0" y1="0" x2="260.788" y2="15.0465" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FF0000"/>
+      <stop offset="1" stop-color="#FFD5AB"/>
+    </linearGradient>
+  </defs>
+</svg>

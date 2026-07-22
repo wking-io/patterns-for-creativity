@@ -16,6 +16,7 @@ export type FeedbackPracticeSlideVariant =
   | "master-your-medium"
   | "language-is-power"
   | "optimize-for-exploration"
+  | "artifacts-less-sacred"
   | "reality-output-artifacts"
   | "tweet";
 
@@ -135,6 +136,11 @@ export function FeedbackPracticeSlide({
       headline: "Optimize for exploration",
       topic: "Taste",
     },
+    "artifacts-less-sacred": {
+      counter: "02 / 02",
+      headline: "Makes artifacts less sacred",
+      topic: "Taste",
+    },
     "reality-output-artifacts": {
       counter: "01 / 01",
       headline: "The output is not the artifacts",
@@ -144,7 +150,8 @@ export function FeedbackPracticeSlide({
   const usesGradientGlitch =
     variant === "master-your-medium" ||
     variant === "language-is-power" ||
-    variant === "optimize-for-exploration";
+    variant === "optimize-for-exploration" ||
+    variant === "artifacts-less-sacred";
 
   return (
     <div

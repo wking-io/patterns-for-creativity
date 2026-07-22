@@ -77,7 +77,7 @@ export function notesSessionReducer(
           ? "Unsaved changes."
           : state.fileName
             ? "All changes saved."
-            : "No notes file open.",
+            : "Speaker notes are ready.",
         phase: isDirty ? "dirty" : state.fileName ? "clean" : "empty",
       };
     }

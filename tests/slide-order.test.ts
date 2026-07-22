@@ -4,6 +4,7 @@ import {
   createSlideOrderRequest,
   formatSlideOrderRequestForCodex,
   moveFrameId,
+  reorderFrameIdGroup,
   reorderFrameIds,
 } from "../src/motion-deck/slide-order.js";
 
@@ -19,6 +20,27 @@ assert.deepEqual(
 );
 assert.deepEqual(reorderFrameIds(original, "think", "think", "before"), original);
 assert.deepEqual(reorderFrameIds(original, "missing", "think", "before"), original);
+
+const groupOriginal = ["cover", "think", "output", "design", "manufacturing"];
+assert.deepEqual(
+  reorderFrameIdGroup(groupOriginal, ["think", "design"], "manufacturing", "after"),
+  ["cover", "output", "manufacturing", "think", "design"],
+  "moves non-adjacent selected frames as one ordered group",
+);
+assert.deepEqual(
+  reorderFrameIdGroup(groupOriginal, ["design", "think"], "output", "before"),
+  ["cover", "think", "design", "output", "manufacturing"],
+  "preserves deck order instead of selection order",
+);
+assert.deepEqual(
+  reorderFrameIdGroup(groupOriginal, ["think", "design"], "design", "after"),
+  groupOriginal,
+  "does not drop a group onto one of its own frames",
+);
+assert.deepEqual(
+  reorderFrameIdGroup(groupOriginal, ["missing"], "output", "before"),
+  groupOriginal,
+);
 
 assert.deepEqual(moveFrameId(original, "output", -1), ["cover", "output", "think", "manufacturing"]);
 assert.deepEqual(moveFrameId(original, "output", 1), ["cover", "think", "manufacturing", "output"]);

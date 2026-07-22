@@ -3,7 +3,7 @@ import { useId } from "react";
 
 export { RealityLossyCompressionSlide } from "./LossyCompressionSlide";
 
-export type RealityOutcomesStep = 0 | 1 | 2 | 3 | 4;
+export type RealityOutcomesStep = 0 | 1 | 2 | 3;
 
 type RealityOutcomesSlideProps = {
   className?: string;
@@ -12,11 +12,6 @@ type RealityOutcomesSlideProps = {
 };
 
 const realityOutcomes = [
-  {
-    id: "paragraph",
-    outcome: "It doesn’t connect",
-    source: "Write the paragraph",
-  },
   {
     id: "abstraction",
     outcome: "It feels clunky",

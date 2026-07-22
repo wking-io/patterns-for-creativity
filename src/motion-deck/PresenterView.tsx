@@ -1,36 +1,32 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from "react";
+import { NumberField } from "@base-ui/react/number-field";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import type { CSSProperties } from "react";
 import type { SpeakerNote } from "./speaker-notes";
-import {
-  createEmptySpeakerNotesFile,
-  defaultSpeakerNotesFileName,
-  parseSpeakerNotesFile,
-} from "./speaker-notes";
 import {
   createInitialNotesSessionState,
   notesSessionReducer,
   selectSessionNote,
 } from "./notes-session";
 import {
-  createSpeakerNotesFile,
-  isFilePickerAbort,
-  openSpeakerNotesFile,
-  saveSpeakerNotesFile,
-  supportsPersistentNotesFiles,
-} from "./speaker-notes-files";
-import type { WritableNotesFileHandle } from "./speaker-notes-files";
+  getPresentationSpeakerNotes,
+  presentationSpeakerNotesFileName,
+  savePresentationSpeakerNotes,
+} from "./presentation-speaker-notes";
 import { motionDeckFrames } from "./frames";
 import { MotionStage } from "./MotionStage";
-import type { AudienceConnectionStatus } from "./presentation-sync";
+import type {
+  AudienceConnectionStatus,
+  PortalMaskRect,
+  PresentationInteractionState,
+} from "./presentation-sync";
+import type { ScratchSegment } from "./presentation-sync";
 import {
   createElapsedTimerState,
-  defaultNotesTextSize,
   elapsedTimerReducer,
   formatElapsedTime,
   getElapsedMilliseconds,
   notesTextSizeOptions,
   readNotesTextSize,
-  updateNotesTextSize,
   writeNotesTextSize,
 } from "./presenter-controls";
 
@@ -42,8 +38,13 @@ type PresenterViewProps = {
   isGridVisible: boolean;
   onNext: () => void;
   onOpenAudience: () => void;
-  onPrevious: () => void;
+  onInteractionState: (state: PresentationInteractionState) => void;
+  onPortalMaskRect: (rect: PortalMaskRect) => void;
+  onScratchSegments: (segments: ScratchSegment[]) => void;
   onToggleAudienceBlackout: () => void;
+  portalMaskRect?: PortalMaskRect;
+  interactionState?: PresentationInteractionState;
+  scratchSegments: readonly ScratchSegment[];
 };
 
 export function PresenterView({
@@ -54,32 +55,31 @@ export function PresenterView({
   isGridVisible,
   onNext,
   onOpenAudience,
-  onPrevious,
+  onInteractionState,
+  onPortalMaskRect,
+  onScratchSegments,
   onToggleAudienceBlackout,
+  portalMaskRect,
+  interactionState,
+  scratchSegments,
 }: PresenterViewProps) {
   const [notesSession, dispatchNotes] = useReducer(
     notesSessionReducer,
     undefined,
-    createInitialNotesSessionState,
+    createInitialPresentationNotesSession,
   );
-  const [editingFrameId, setEditingFrameId] = useState<string>();
-  const [editStartNote, setEditStartNote] = useState<SpeakerNote>();
-  const [hasWritableHandle, setHasWritableHandle] = useState(false);
   const [timer, dispatchTimer] = useReducer(
     elapsedTimerReducer,
     undefined,
     createElapsedTimerState,
   );
   const [now, setNow] = useState(() => Date.now());
-  const [notesTextSize, setNotesTextSize] = useState(() => (
+  const [notesTextSize, setNotesTextSize] = useState<number>(() => (
     readNotesTextSize(getPresenterPreferenceStorage())
   ));
-  const fileHandleRef = useRef<WritableNotesFileHandle | undefined>(undefined);
   const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[0];
   const nextFrame = motionDeckFrames[frameIndex + 1];
   const currentNote = selectSessionNote(notesSession, frame.id);
-  const isEditing = editingFrameId === frame.id;
-  const hasPersistentFileSupport = supportsPersistentNotesFiles();
   const audienceStatusContent = getAudienceStatusContent(
     audienceStatus,
     isAudienceBlackout,
@@ -94,109 +94,27 @@ export function PresenterView({
       ? "Pause"
       : "Resume";
 
-  const confirmDiscardUnsavedNotes = useCallback(() => (
-    !notesSession.isDirty || window.confirm(
-      "Discard unsaved speaker-note changes and switch files?",
-    )
-  ), [notesSession.isDirty]);
-
-  const handleCreate = async () => {
-    if (!confirmDiscardUnsavedNotes()) {
-      return;
-    }
-
-    const emptyDocument = createEmptySpeakerNotesFile();
-
-    try {
-      const created = await createSpeakerNotesFile(emptyDocument);
-      fileHandleRef.current = created.handle;
-      setHasWritableHandle(Boolean(created.handle));
-      setEditingFrameId(undefined);
-      dispatchNotes({
-        type: "replace-document",
-        document: emptyDocument,
-        fileName: created.fileName,
-        persisted: created.persisted,
-      });
-    } catch (error) {
-      if (!isFilePickerAbort(error)) {
-        dispatchNotes({ type: "save-failure", message: getErrorMessage(error) });
-      }
-    }
-  };
-
-  const handleOpen = async () => {
-    if (!confirmDiscardUnsavedNotes()) {
-      return;
-    }
-
-    try {
-      const opened = await openSpeakerNotesFile();
-      const document = parseSpeakerNotesFile(opened.contents);
-      fileHandleRef.current = opened.handle;
-      setHasWritableHandle(Boolean(opened.handle));
-      setEditingFrameId(undefined);
-      dispatchNotes({
-        type: "replace-document",
-        document,
-        fileName: opened.fileName,
-        persisted: true,
-      });
-    } catch (error) {
-      if (!isFilePickerAbort(error)) {
-        dispatchNotes({ type: "invalid-file", message: getErrorMessage(error) });
-      }
-    }
-  };
-
   const handleSave = useCallback(async () => {
-    if (notesSession.phase === "saving") {
+    if (notesSession.phase === "saving" || !notesSession.isDirty) {
       return;
     }
 
     dispatchNotes({ type: "save-start" });
 
     try {
-      const result = await saveSpeakerNotesFile(
-        notesSession.document,
-        fileHandleRef.current,
-        notesSession.fileName ?? defaultSpeakerNotesFileName,
-      );
-      fileHandleRef.current = result.handle;
-      setHasWritableHandle(Boolean(result.handle));
+      await savePresentationSpeakerNotes(notesSession.document);
       dispatchNotes({
         type: "save-success",
-        fileName: result.fileName,
-        message: result.mode === "download"
-          ? `Downloaded ${result.fileName}. Future saves will download another copy.`
-          : `Saved ${result.fileName}.`,
+        fileName: presentationSpeakerNotesFileName,
+        message: "Saved speaker notes to this presentation.",
       });
     } catch (error) {
-      if (isFilePickerAbort(error)) {
-        dispatchNotes({ type: "save-failure", message: "Save canceled. Changes remain unsaved." });
-        return;
-      }
-
       dispatchNotes({ type: "save-failure", message: getErrorMessage(error) });
     }
-  }, [notesSession.document, notesSession.fileName, notesSession.phase]);
+  }, [notesSession.document, notesSession.isDirty, notesSession.phase]);
 
   const updateCurrentNote = (note: SpeakerNote) => {
     dispatchNotes({ type: "edit-note", frameId: frame.id, note });
-  };
-
-  const startEditing = () => {
-    setEditStartNote(currentNote);
-    setEditingFrameId(frame.id);
-  };
-
-  const cancelEditing = () => {
-    if (editStartNote) {
-      updateCurrentNote(editStartNote);
-    }
-
-    setEditingFrameId(undefined);
-    setEditStartNote(undefined);
   };
 
   useEffect(() => {
@@ -207,11 +125,6 @@ export function PresenterView({
   useEffect(() => {
     writeNotesTextSize(getPresenterPreferenceStorage(), notesTextSize);
   }, [notesTextSize]);
-
-  useEffect(() => {
-    setEditingFrameId(undefined);
-    setEditStartNote(undefined);
-  }, [frame.id]);
 
   useEffect(() => {
     if (!notesSession.isDirty) {
@@ -255,110 +168,295 @@ export function PresenterView({
     setNow(at);
   };
 
-  const changeNotesTextSize = (action: "increase" | "decrease" | "reset") => {
-    setNotesTextSize((currentSize) => updateNotesTextSize(currentSize, action));
-  };
-
   return (
     <main className="presenter-view-root">
       <header className="presenter-view-header">
-        <div className="presenter-view-header__title">
-          <p className="presenter-view-eyebrow">Presenter View</p>
-          <h1>{frame.label}</h1>
-        </div>
         <section aria-label="Presentation timing" className="presenter-timing">
-          <div className="presenter-time-readout">
-            <span>Local time</span>
-            <time dateTime={new Date(now).toISOString()}>{formatLocalTime(now)}</time>
-          </div>
-          <div className="presenter-time-readout" data-timer-status={timer.status}>
-            <span>Elapsed</span>
-            <output>{elapsedTime}</output>
-          </div>
+          <output className="presenter-elapsed-time" data-timer-status={timer.status}>
+            {elapsedTime}
+          </output>
           <div className="presenter-timer-actions">
-            <button onClick={handleTimerAction} type="button">{timerAction}</button>
             <button
+              aria-label={timerAction}
+              className="presenter-timer-icon-control"
+              onClick={handleTimerAction}
+              title={timerAction}
+              type="button"
+            >
+              {timer.status === "running" ? (
+                <svg
+                  aria-hidden="true"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M4 4V20H9V4H4Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M15 4V20H20V4H15Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  aria-hidden="true"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M6 4V20L20 12L6 4Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                </svg>
+              )}
+            </button>
+            <button
+              aria-label="Reset timer"
+              className="presenter-timer-icon-control"
               disabled={timer.status === "idle"}
               onClick={() => {
                 dispatchTimer({ type: "reset" });
                 setNow(Date.now());
               }}
+              title="Reset timer"
               type="button"
             >
-              Reset
+              <svg
+                aria-hidden="true"
+                height="24"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M6 15.5L2.5 19L6 22.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="square"
+                  strokeMiterlimit="10"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M18 8.5L21.5 5L18 1.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="square"
+                  strokeMiterlimit="10"
+                  strokeWidth="2"
+                />
+                <path d="M22 20H2.5V18H20V11.7402L22 9.74023V20Z" fill="currentColor" />
+                <path d="M21.5 6H4V12.2617L2 14.2617V4H21.5V6Z" fill="currentColor" />
+              </svg>
             </button>
           </div>
+          <span className="presenter-frame-position">
+            {frameIndex + 1} / {motionDeckFrames.length}
+          </span>
         </section>
         <div className="presenter-view-header__status">
           <div className="presenter-view-header__presentation-actions">
-            <span>{frameIndex + 1} / {motionDeckFrames.length}</span>
+            <span
+              aria-live="polite"
+              className="presenter-audience-status"
+              data-blackout={isAudienceBlackout ? "active" : "inactive"}
+              data-status={audienceStatus}
+            >
+              <strong>{audienceStatusContent.label}</strong>
+            </span>
             <button
+              aria-label={isAudienceBlackout ? "Restore audience" : "Black out audience"}
               aria-keyshortcuts="B"
               aria-pressed={isAudienceBlackout}
               className="presenter-blackout-control"
               data-active={isAudienceBlackout}
               disabled={!canToggleAudienceBlackout}
               onClick={onToggleAudienceBlackout}
+              title={isAudienceBlackout ? "Restore audience (B)" : "Black out audience (B)"}
               type="button"
             >
-              {isAudienceBlackout ? "Restore audience (B)" : "Black out audience (B)"}
+              {isAudienceBlackout ? (
+                <svg
+                  aria-hidden="true"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9 17.6434L9.543 14.3559L9.45966 14.8559"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M15 17.6434L14.438 14.3642L14.5213 14.8642"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M3.5 15.1434L5.5 12.6434L5.21282 13.0024"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M20.5 15.1434L18.5 12.6434L18.7872 13.0024"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M22 8.99997C20.4711 11.0353 17.0488 14.6434 12 14.6434C6.95123 14.6434 3.52892 11.0353 2 8.99997"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeMiterlimit="10"
+                    strokeWidth="2"
+                  />
+                </svg>
+              ) : (
+                <svg
+                  aria-hidden="true"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  width="24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M9 4L9.55078 7.30907L9.46745 6.80907"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M15 4L14.442 7.29696L14.5253 6.79696"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M3.5 6.5L5.5 9L5.21282 8.64102"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M20.5 6.5L18.5 9L18.7872 8.64102"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M22 12.6435C20.4711 10.6081 17.0488 7 12 7C6.95123 7 3.52892 10.6081 2 12.6435"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeMiterlimit="10"
+                    strokeWidth="2"
+                  />
+                  <path
+                    d="M15.5 14.5C15.5 16.433 13.933 18 12 18C10.067 18 8.5 16.433 8.5 14.5C8.5 12.567 10.067 11 12 11C13.933 11 15.5 12.567 15.5 14.5Z"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  />
+                </svg>
+              )}
             </button>
-            <button onClick={onOpenAudience} type="button">
-              {audienceStatusContent.action}
+            <button
+              aria-label={audienceStatusContent.action}
+              className="presenter-audience-display-control"
+              onClick={onOpenAudience}
+              title={audienceStatusContent.action}
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                height="24"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M22 16L22 4L2 4L2 16L22 16Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="square"
+                  strokeMiterlimit="10"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M17 21H17.01"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="square"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M7 21H7.01"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="square"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M12 21H12.01"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="square"
+                  strokeWidth="3"
+                />
+              </svg>
             </button>
           </div>
-          <span
-            aria-live="polite"
-            className="presenter-audience-status"
-            data-blackout={isAudienceBlackout ? "active" : "inactive"}
-            data-status={audienceStatus}
-          >
-            <strong>{audienceStatusContent.label}</strong>
-            <span>{audienceStatusContent.detail}</span>
-          </span>
-          <span
-            aria-live="polite"
-            className="presenter-notes-status"
-            data-phase={notesSession.phase}
-          >
-            {notesSession.message ?? "No notes file open."}
-          </span>
         </div>
       </header>
 
       <div className="presenter-view-workspace">
         <section aria-label="Slide previews" className="presenter-preview-column">
           <div className="presenter-preview-card presenter-preview-card--current">
-            <div className="presenter-preview-card__label">Current</div>
             <div className="presenter-stage-shell">
               <MotionStage
                 direction={direction}
                 frame={frame}
                 isGridVisible={isGridVisible}
+                interactionState={interactionState}
+                mode="presenter"
                 onAdvance={onNext}
+                onPortalMaskRect={onPortalMaskRect}
+                onInteractionState={onInteractionState}
+                onScratchSegments={onScratchSegments}
+                scratchSegments={scratchSegments}
+                portalMaskRect={portalMaskRect}
               />
             </div>
           </div>
 
           <div className="presenter-preview-footer">
-            <div className="presenter-navigation-controls">
-              <button disabled={frameIndex === 0} onClick={onPrevious} type="button">
-                Previous
-              </button>
-              <button
-                className="presenter-button--primary"
-                disabled={!nextFrame}
-                onClick={onNext}
-                type="button"
-              >
-                Next
-              </button>
-            </div>
-
             <div className="presenter-preview-card presenter-preview-card--next">
-              <div className="presenter-preview-card__label">
-                {nextFrame ? `Next · ${nextFrame.label}` : "End of deck"}
-              </div>
               {nextFrame ? (
                 <button
                   aria-label={`Advance to ${nextFrame.label}`}
@@ -370,7 +468,10 @@ export function PresenterView({
                     direction={1}
                     frame={nextFrame}
                     isGridVisible={false}
+                    interactionState={interactionState}
                     mode="preview"
+                    portalMaskRect={portalMaskRect}
+                    scratchSegments={scratchSegments}
                   />
                 </button>
               ) : (
@@ -385,125 +486,99 @@ export function PresenterView({
           className="presenter-notes-panel"
           style={{ "--presenter-notes-text-size": `${notesTextSize}px` } as CSSProperties}
         >
-          <div className="presenter-notes-panel__toolbar">
-            <div>
-              <p className="presenter-view-eyebrow">Speaker notes</p>
-              <strong>{notesSession.fileName ?? "Unsaved notes"}</strong>
+          <div className="presenter-notes-editor">
+            <textarea
+              aria-label="Speaker notes"
+              onChange={(event) => updateCurrentNote({
+                ...currentNote,
+                body: event.target.value,
+              })}
+              placeholder="Add what you want to say for this frame…"
+              value={currentNote.body}
+            />
+          </div>
+
+          <div className="presenter-notes-panel__footer">
+            <div className="presenter-notes-text-size">
+              <NumberField.Root
+                className="presenter-notes-text-size__field"
+                max={notesTextSizeOptions.at(-1)}
+                min={notesTextSizeOptions[0]}
+                onValueChange={(value) => {
+                  if (value !== null) {
+                    setNotesTextSize(value);
+                  }
+                }}
+                snapOnStep
+                step={2}
+                value={notesTextSize}
+              >
+                <NumberField.Group className="presenter-notes-text-size__group">
+                  <NumberField.Decrement
+                    aria-label="Decrease notes text size"
+                    className="presenter-notes-text-size__stepper"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M3 12L21 12"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeLinecap="square"
+                        strokeWidth="2"
+                      />
+                    </svg>
+                  </NumberField.Decrement>
+                  <NumberField.Input
+                    aria-label="Notes text size in pixels"
+                    className="presenter-notes-text-size__input"
+                  />
+                  <NumberField.Increment
+                    aria-label="Increase notes text size"
+                    className="presenter-notes-text-size__stepper"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      width="24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M3 12H21"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeLinecap="square"
+                        strokeMiterlimit="10"
+                        strokeWidth="2"
+                      />
+                      <path
+                        d="M12 3V21"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeLinecap="square"
+                        strokeMiterlimit="10"
+                        strokeWidth="2"
+                      />
+                    </svg>
+                  </NumberField.Increment>
+                </NumberField.Group>
+              </NumberField.Root>
             </div>
             <div className="presenter-notes-file-actions">
-              <button disabled={notesSession.phase === "saving"} onClick={handleCreate} type="button">
-                New
-              </button>
-              <button disabled={notesSession.phase === "saving"} onClick={handleOpen} type="button">
-                Open
-              </button>
               <button
                 className="presenter-button--primary"
                 disabled={!notesSession.isDirty || notesSession.phase === "saving"}
                 onClick={() => void handleSave()}
                 type="button"
               >
-                {hasWritableHandle ? "Save" : "Save As"}
+                Save changes
               </button>
-            </div>
-          </div>
-
-          {!hasPersistentFileSupport ? (
-            <p className="presenter-file-fallback-note">
-              This browser cannot overwrite a selected file. Save As downloads a complete new copy.
-            </p>
-          ) : null}
-
-          {isEditing ? (
-            <div className="presenter-notes-editor">
-              <label>
-                <span>Notes</span>
-                <textarea
-                  autoFocus
-                  onChange={(event) => updateCurrentNote({
-                    ...currentNote,
-                    body: event.target.value,
-                  })}
-                  placeholder="Add what you want to say for this frame…"
-                  rows={12}
-                  value={currentNote.body}
-                />
-              </label>
-              <label>
-                <span>Presenter cue</span>
-                <input
-                  onChange={(event) => updateCurrentNote({
-                    ...currentNote,
-                    cue: event.target.value,
-                  })}
-                  placeholder="Pause, ask the room, wait for animation…"
-                  type="text"
-                  value={currentNote.cue ?? ""}
-                />
-              </label>
-              <div className="presenter-notes-editor__actions">
-                <button onClick={cancelEditing} type="button">Cancel edits</button>
-                <button
-                  className="presenter-button--primary"
-                  onClick={() => setEditingFrameId(undefined)}
-                  type="button"
-                >
-                  Done editing
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="presenter-notes-reader">
-              {currentNote.cue ? (
-                <div className="presenter-note-cue">
-                  <span>Cue</span>
-                  <p>{currentNote.cue}</p>
-                </div>
-              ) : null}
-              {currentNote.body ? (
-                <div className="presenter-note-body">{currentNote.body}</div>
-              ) : (
-                <div className="presenter-note-empty">
-                  <strong>No notes for this frame.</strong>
-                  <span>Add a thought, transition, or reminder when you’re ready.</span>
-                </div>
-              )}
-              <button className="presenter-edit-notes" onClick={startEditing} type="button">
-                Edit this frame’s notes
-              </button>
-            </div>
-          )}
-
-          <div className="presenter-notes-panel__footer">
-            <div aria-label="Notes text size" className="presenter-notes-text-size" role="group">
-              <button
-                aria-label="Decrease notes text size"
-                disabled={notesTextSize === notesTextSizeOptions[0]}
-                onClick={() => changeNotesTextSize("decrease")}
-                type="button"
-              >
-                A−
-              </button>
-              <output aria-live="polite">{notesTextSize}px</output>
-              <button
-                aria-label="Increase notes text size"
-                disabled={notesTextSize === notesTextSizeOptions.at(-1)}
-                onClick={() => changeNotesTextSize("increase")}
-                type="button"
-              >
-                A+
-              </button>
-              <button
-                disabled={notesTextSize === defaultNotesTextSize}
-                onClick={() => changeNotesTextSize("reset")}
-                type="button"
-              >
-                Default
-              </button>
-            </div>
-            <div className="presenter-notes-panel__footer-meta">
-              <span>⌘/Ctrl+S saves</span>
-              <span>Notes keyed to <code>{frame.id}</code></span>
             </div>
           </div>
         </section>
@@ -512,16 +587,19 @@ export function PresenterView({
   );
 }
 
-function getErrorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Speaker notes could not be saved.";
+function createInitialPresentationNotesSession() {
+  const initialState = createInitialNotesSessionState();
+
+  return notesSessionReducer(initialState, {
+    type: "replace-document",
+    document: getPresentationSpeakerNotes(),
+    fileName: presentationSpeakerNotesFileName,
+    persisted: true,
+  });
 }
 
-function formatLocalTime(timestamp: number) {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "numeric",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(timestamp);
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Speaker notes could not be saved.";
 }
 
 function getPresenterPreferenceStorage() {
@@ -541,31 +619,26 @@ function getAudienceStatusContent(
       case "opening":
         return {
           action: "Open again",
-          detail: "Waiting for the audience window to check in.",
           label: "Audience display opening",
         };
       case "connected":
         return {
           action: "Refresh audience display",
-          detail: "Following the current presenter frame.",
           label: "Audience display connected",
         };
       case "disconnected":
         return {
           action: "Reconnect audience display",
-          detail: "No recent response. Reopen it to restore the current frame.",
           label: "Audience display disconnected",
         };
       case "popup-blocked":
         return {
           action: "Try opening again",
-          detail: "Allow pop-ups for this page, then try again.",
           label: "Audience display blocked",
         };
       case "closed":
         return {
           action: "Open audience display",
-          detail: "Open or reopen a second display when ready.",
           label: "Audience display closed",
         };
     }
@@ -578,8 +651,5 @@ function getAudienceStatusContent(
   return {
     ...content,
     label: status === "connected" ? "Audience blacked out" : "Blackout remains active",
-    detail: status === "connected"
-      ? "Navigation continues; press B to restore the latest frame."
-      : "A reconnected audience will remain black until you restore it.",
   };
 }

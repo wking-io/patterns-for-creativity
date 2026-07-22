@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent } from "react";
+import type { PointerEvent } from "react";
 import { motionDeckFrames } from "./frames";
 import { MotionStage } from "./MotionStage";
 import {
   countMovedFrameIds,
   createSlideOrderRequest,
   formatSlideOrderRequestForCodex,
-  moveFrameId,
-  reorderFrameIds,
+  reorderFrameIdGroup,
 } from "./slide-order";
 import type { SlideOrderDropEdge } from "./slide-order";
 import "./organizer.css";
@@ -20,11 +19,26 @@ type DropTarget = {
   frameId: string;
 };
 
+type PointerDrag = {
+  frameIds: string[];
+  isDragging: boolean;
+  pointerId: number;
+  sourceFrameId: string;
+  startX: number;
+  startY: number;
+};
+
+const dragStartDistance = 6;
+
 export function SlideOrganizer() {
   const [frameIds, setFrameIds] = useState(initialFrameIds);
-  const [draggedFrameId, setDraggedFrameId] = useState<string>();
+  const [draggedFrameIds, setDraggedFrameIds] = useState<string[]>([]);
+  const [selectedFrameIds, setSelectedFrameIds] = useState<Set<string>>(() => new Set());
   const [dropTarget, setDropTarget] = useState<DropTarget>();
   const [copyStatus, setCopyStatus] = useState<string>();
+  const pointerDragRef = useRef<PointerDrag | undefined>(undefined);
+  const dropTargetRef = useRef<DropTarget | undefined>(undefined);
+  const selectedFrameIdsRef = useRef(selectedFrameIds);
   const movedFrameCount = countMovedFrameIds(frameIds, initialFrameIds);
   const hasChanges = movedFrameCount > 0;
 
@@ -38,49 +52,142 @@ export function SlideOrganizer() {
     return frame;
   }), [frameIds]);
 
-  const moveFrame = (frameId: string, offset: -1 | 1) => {
-    setFrameIds((currentFrameIds) => moveFrameId(currentFrameIds, frameId, offset));
-    setCopyStatus(undefined);
+  const replaceSelection = (nextFrameIds: Iterable<string>) => {
+    const nextSelection = new Set(nextFrameIds);
+    selectedFrameIdsRef.current = nextSelection;
+    setSelectedFrameIds(nextSelection);
   };
 
-  const handleDragStart = (event: DragEvent<HTMLElement>, frameId: string) => {
-    event.dataTransfer.effectAllowed = "move";
-    event.dataTransfer.setData("text/plain", frameId);
-    setDraggedFrameId(frameId);
-    setCopyStatus(undefined);
+  const toggleFrameSelection = (frameId: string) => {
+    const nextSelection = new Set(selectedFrameIdsRef.current);
+
+    if (nextSelection.has(frameId)) {
+      nextSelection.delete(frameId);
+    } else {
+      nextSelection.add(frameId);
+    }
+
+    replaceSelection(nextSelection);
   };
 
-  const handleDragOver = (event: DragEvent<HTMLElement>, frameId: string) => {
-    if (draggedFrameId === frameId) {
+  const updateDropTarget = (nextTarget: DropTarget | undefined) => {
+    dropTargetRef.current = nextTarget;
+    setDropTarget(nextTarget);
+  };
+
+  const startPointerDrag = (
+    event: PointerEvent<HTMLElement>,
+    frameId: string,
+    allowTouch: boolean,
+  ) => {
+    if (event.button !== 0 || (!allowTouch && event.pointerType !== "mouse")) {
       return;
     }
 
     event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const edge = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
-
-    setDropTarget((currentTarget) => (
-      currentTarget?.frameId === frameId && currentTarget.edge === edge
-        ? currentTarget
-        : { edge, frameId }
-    ));
+    const isSelected = selectedFrameIdsRef.current.has(frameId);
+    pointerDragRef.current = {
+      frameIds: isSelected
+        ? frameIds.filter((candidateId) => selectedFrameIdsRef.current.has(candidateId))
+        : [frameId],
+      isDragging: false,
+      pointerId: event.pointerId,
+      sourceFrameId: frameId,
+      startX: event.clientX,
+      startY: event.clientY,
+    };
   };
 
-  const handleDrop = (event: DragEvent<HTMLElement>, frameId: string) => {
-    event.preventDefault();
-    const sourceFrameId = draggedFrameId || event.dataTransfer.getData("text/plain");
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const edge = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
+  const movePointerDrag = (event: PointerEvent<HTMLElement>) => {
+    const pointerDrag = pointerDragRef.current;
 
-    if (sourceFrameId) {
-      setFrameIds((currentFrameIds) => (
-        reorderFrameIds(currentFrameIds, sourceFrameId, frameId, edge)
-      ));
+    if (!pointerDrag || pointerDrag.pointerId !== event.pointerId) {
+      return;
     }
 
-    setDraggedFrameId(undefined);
-    setDropTarget(undefined);
+    if (!pointerDrag.isDragging) {
+      const distance = Math.hypot(
+        event.clientX - pointerDrag.startX,
+        event.clientY - pointerDrag.startY,
+      );
+
+      if (distance < dragStartDistance) {
+        return;
+      }
+
+      pointerDrag.isDragging = true;
+
+      if (!selectedFrameIdsRef.current.has(pointerDrag.sourceFrameId)) {
+        replaceSelection([pointerDrag.sourceFrameId]);
+      }
+
+      setDraggedFrameIds(pointerDrag.frameIds);
+      setCopyStatus(undefined);
+    }
+
+    event.preventDefault();
+    const card = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>("[data-organizer-frame-id]");
+    const targetFrameId = card?.dataset.organizerFrameId;
+
+    if (!card || !targetFrameId || pointerDrag.frameIds.includes(targetFrameId)) {
+      updateDropTarget(undefined);
+      return;
+    }
+
+    const bounds = card.getBoundingClientRect();
+    const edge = event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
+    const nextTarget = { edge, frameId: targetFrameId } satisfies DropTarget;
+
+    if (
+      dropTargetRef.current?.frameId !== nextTarget.frameId ||
+      dropTargetRef.current.edge !== nextTarget.edge
+    ) {
+      updateDropTarget(nextTarget);
+    }
+  };
+
+  const finishPointerDrag = (event: PointerEvent<HTMLElement>) => {
+    const pointerDrag = pointerDragRef.current;
+
+    if (!pointerDrag || pointerDrag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const target = dropTargetRef.current;
+
+    if (pointerDrag.isDragging && target) {
+      setFrameIds((currentFrameIds) => (
+        reorderFrameIdGroup(
+          currentFrameIds,
+          pointerDrag.frameIds,
+          target.frameId,
+          target.edge,
+        )
+      ));
+      replaceSelection([]);
+    }
+
+    if (!pointerDrag.isDragging) {
+      toggleFrameSelection(pointerDrag.sourceFrameId);
+    }
+
+    pointerDragRef.current = undefined;
+    setDraggedFrameIds([]);
+    updateDropTarget(undefined);
+  };
+
+  const cancelPointerDrag = (event: PointerEvent<HTMLElement>) => {
+    const pointerDrag = pointerDragRef.current;
+
+    if (!pointerDrag || pointerDrag.pointerId !== event.pointerId) {
+      return;
+    }
+
+    pointerDragRef.current = undefined;
+    setDraggedFrameIds([]);
+    updateDropTarget(undefined);
   };
 
   const handleCopyForCodex = async () => {
@@ -100,14 +207,19 @@ export function SlideOrganizer() {
     : "Drag a slide to create a reorder request.";
 
   return (
-    <main className="slide-organizer-root">
+    <main
+      className="slide-organizer-root"
+      onPointerCancel={cancelPointerDrag}
+      onPointerMove={movePointerDrag}
+      onPointerUp={finishPointerDrag}
+    >
       <header className="slide-organizer-header">
         <div>
           <p className="slide-organizer-eyebrow">One-off deck tool</p>
           <h1>Organize slides</h1>
           <p className="slide-organizer-intro">
-            Drag thumbnails into sequence. When the order feels right, copy a precise request for
-            Codex to apply to the source deck.
+            Select one or more thumbnails, then drag any selected slide to move the group. When the
+            order feels right, copy a precise request for Codex to apply to the source deck.
           </p>
         </div>
 
@@ -121,6 +233,7 @@ export function SlideOrganizer() {
             disabled={!hasChanges}
             onClick={() => {
               setFrameIds(initialFrameIds);
+              replaceSelection([]);
               setCopyStatus(undefined);
             }}
             type="button"
@@ -138,6 +251,32 @@ export function SlideOrganizer() {
         </div>
       </header>
 
+      <div className="slide-organizer-selection-bar">
+        <span aria-live="polite">
+          {selectedFrameIds.size === 0
+            ? "No slides selected"
+            : `${selectedFrameIds.size} slide${selectedFrameIds.size === 1 ? "" : "s"} selected`}
+        </span>
+        <div>
+          <button
+            className="slide-organizer-button"
+            disabled={selectedFrameIds.size === frameIds.length}
+            onClick={() => replaceSelection(frameIds)}
+            type="button"
+          >
+            Select all
+          </button>
+          <button
+            className="slide-organizer-button"
+            disabled={selectedFrameIds.size === 0}
+            onClick={() => replaceSelection([])}
+            type="button"
+          >
+            Clear selection
+          </button>
+        </div>
+      </div>
+
       <section aria-label="Slides in presentation order" className="slide-organizer-grid">
         {frames.map((frame, index) => {
           const targetEdge = dropTarget?.frameId === frame.id ? dropTarget.edge : undefined;
@@ -145,29 +284,38 @@ export function SlideOrganizer() {
           return (
             <article
               className="slide-organizer-card"
-              data-dragging={draggedFrameId === frame.id ? "true" : "false"}
+              data-dragging={draggedFrameIds.includes(frame.id) ? "true" : "false"}
               data-drop-edge={targetEdge}
+              data-organizer-frame-id={frame.id}
+              data-selected={selectedFrameIds.has(frame.id) ? "true" : "false"}
               key={frame.id}
-              onDragOver={(event) => handleDragOver(event, frame.id)}
-              onDrop={(event) => handleDrop(event, frame.id)}
             >
-              <div className="slide-organizer-thumbnail">
+              <div
+                className="slide-organizer-thumbnail"
+                onPointerDown={(event) => startPointerDrag(event, frame.id, false)}
+              >
                 <LazySlideThumbnail frameId={frame.id} />
                 <span className="slide-organizer-number">{index + 1}</span>
+                <button
+                  aria-label={`${selectedFrameIds.has(frame.id) ? "Deselect" : "Select"} ${frame.label}`}
+                  aria-pressed={selectedFrameIds.has(frame.id)}
+                  className="slide-organizer-select-control"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    toggleFrameSelection(frame.id);
+                  }}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  type="button"
+                >
+                  <span aria-hidden="true">✓</span>
+                </button>
               </div>
 
               <div className="slide-organizer-card-footer">
                 <span
-                  aria-label={`Drag ${frame.label}`}
+                  aria-hidden="true"
                   className="slide-organizer-drag-handle"
-                  draggable
-                  onDragEnd={() => {
-                    setDraggedFrameId(undefined);
-                    setDropTarget(undefined);
-                  }}
-                  onDragStart={(event) => handleDragStart(event, frame.id)}
-                  role="button"
-                  tabIndex={0}
+                  onPointerDown={(event) => startPointerDrag(event, frame.id, true)}
                   title="Drag to reorder"
                 >
                   <span aria-hidden="true">⠿</span>
@@ -175,26 +323,6 @@ export function SlideOrganizer() {
                 <span className="slide-organizer-card-title">
                   <strong>{frame.label}</strong>
                   <code>{frame.id}</code>
-                </span>
-                <span className="slide-organizer-nudge-actions">
-                  <button
-                    aria-label={`Move ${frame.label} earlier`}
-                    disabled={index === 0}
-                    onClick={() => moveFrame(frame.id, -1)}
-                    title="Move earlier"
-                    type="button"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    aria-label={`Move ${frame.label} later`}
-                    disabled={index === frames.length - 1}
-                    onClick={() => moveFrame(frame.id, 1)}
-                    title="Move later"
-                    type="button"
-                  >
-                    ↓
-                  </button>
                 </span>
               </div>
             </article>

@@ -23,19 +23,87 @@ export type PresentationStateMessage = {
   isAudienceBlackout: boolean;
 };
 
+export type ScratchSegment = {
+  fromX: number;
+  fromY: number;
+  toX: number;
+  toY: number;
+};
+
+export type PresentationScratchMessage = {
+  type: "presentation-scratch";
+  version: typeof presentationMessageVersion;
+  sessionId: string;
+  revision: number;
+  mode: "append" | "replace";
+  segments: ScratchSegment[];
+};
+
+export type PortalMaskRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type PresentationPortalMaskMessage = {
+  type: "presentation-portal-mask";
+  version: typeof presentationMessageVersion;
+  sessionId: string;
+  revision: number;
+  rect: PortalMaskRect;
+};
+
+export type PresentationPointerPosition = {
+  x: number;
+  y: number;
+};
+
+export type ExposureMaskStep = 1 | 2 | 3 | 4;
+
+export type PresentationCollectionScrollState = {
+  startedAt: number;
+  speed: number;
+};
+
+export type PresentationInteractionState = {
+  frameId: string;
+  pointer?: PresentationPointerPosition;
+  exposureCollectionScroll?: PresentationCollectionScrollState;
+  exposureMaskStep?: ExposureMaskStep;
+  exposureScoreId?: string;
+};
+
+export type PresentationInteractionMessage = {
+  type: "presentation-interaction";
+  version: typeof presentationMessageVersion;
+  sessionId: string;
+  revision: number;
+  state: PresentationInteractionState;
+};
+
 export type AudiencePresenceMessage = {
   type: "audience-ready" | "audience-heartbeat" | "audience-closing";
   version: typeof presentationMessageVersion;
   audienceId: string;
 };
 
-export type PresentationMessage = PresentationStateMessage | AudiencePresenceMessage;
+export type PresentationMessage =
+  | PresentationStateMessage
+  | PresentationScratchMessage
+  | PresentationPortalMaskMessage
+  | PresentationInteractionMessage
+  | AudiencePresenceMessage;
 
 export type PresentationStateCursor = {
   sessionId?: string;
   revision: number;
   retiredSessionIds: readonly string[];
 };
+
+export type PresentationScratchCursor = PresentationStateCursor;
+export type PresentationPortalMaskCursor = PresentationStateCursor;
+export type PresentationInteractionCursor = PresentationStateCursor;
 
 export type AudienceConnectionState = {
   status: AudienceConnectionStatus;
@@ -107,6 +175,63 @@ export function createPresentationStateMessage(
   };
 }
 
+export function createPresentationScratchMessage(
+  sessionId: string,
+  revision: number,
+  mode: PresentationScratchMessage["mode"],
+  segments: readonly ScratchSegment[],
+): PresentationScratchMessage {
+  return {
+    type: "presentation-scratch",
+    version: presentationMessageVersion,
+    sessionId,
+    revision,
+    mode,
+    segments: [...segments],
+  };
+}
+
+export function createPresentationScratchSnapshot(
+  sessionId: string,
+  revision: number,
+  segments: readonly ScratchSegment[],
+): PresentationScratchMessage {
+  return createPresentationScratchMessage(
+    sessionId,
+    revision,
+    "replace",
+    segments,
+  );
+}
+
+export function createPresentationPortalMaskMessage(
+  sessionId: string,
+  revision: number,
+  rect: PortalMaskRect,
+): PresentationPortalMaskMessage {
+  return {
+    type: "presentation-portal-mask",
+    version: presentationMessageVersion,
+    sessionId,
+    revision,
+    rect,
+  };
+}
+
+export function createPresentationInteractionMessage(
+  sessionId: string,
+  revision: number,
+  state: PresentationInteractionState,
+): PresentationInteractionMessage {
+  return {
+    type: "presentation-interaction",
+    version: presentationMessageVersion,
+    sessionId,
+    revision,
+    state,
+  };
+}
+
 export function createAudiencePresenceMessage(
   type: AudiencePresenceMessage["type"],
   audienceId: string,
@@ -140,6 +265,54 @@ export function parsePresentationMessage(
   }
 
   if (
+    value.type === "presentation-scratch" &&
+    isNonEmptyString(value.sessionId) &&
+    isNonNegativeInteger(value.revision) &&
+    (value.mode === "append" || value.mode === "replace") &&
+    Array.isArray(value.segments) &&
+    value.segments.every(isScratchSegment)
+  ) {
+    return {
+      type: "presentation-scratch",
+      version: presentationMessageVersion,
+      sessionId: value.sessionId,
+      revision: value.revision,
+      mode: value.mode,
+      segments: value.segments,
+    };
+  }
+
+  if (
+    value.type === "presentation-portal-mask" &&
+    isNonEmptyString(value.sessionId) &&
+    isNonNegativeInteger(value.revision) &&
+    isPortalMaskRect(value.rect)
+  ) {
+    return {
+      type: "presentation-portal-mask",
+      version: presentationMessageVersion,
+      sessionId: value.sessionId,
+      revision: value.revision,
+      rect: value.rect,
+    };
+  }
+
+  if (
+    value.type === "presentation-interaction" &&
+    isNonEmptyString(value.sessionId) &&
+    isNonNegativeInteger(value.revision) &&
+    isPresentationInteractionState(value.state)
+  ) {
+    return {
+      type: "presentation-interaction",
+      version: presentationMessageVersion,
+      sessionId: value.sessionId,
+      revision: value.revision,
+      state: value.state,
+    };
+  }
+
+  if (
     value.type !== "presentation-state" ||
     !isNonEmptyString(value.sessionId) ||
     !isNonNegativeInteger(value.revision) ||
@@ -169,9 +342,28 @@ export function createPresentationStateCursor(): PresentationStateCursor {
   };
 }
 
+export function createPresentationScratchCursor(): PresentationScratchCursor {
+  return createPresentationStateCursor();
+}
+
+export function createPresentationPortalMaskCursor(): PresentationPortalMaskCursor {
+  return createPresentationStateCursor();
+}
+
+export function createPresentationInteractionCursor(): PresentationInteractionCursor {
+  return createPresentationStateCursor();
+}
+
 export function acceptPresentationState(
   cursor: PresentationStateCursor,
   message: PresentationStateMessage,
+): { accepted: boolean; cursor: PresentationStateCursor } {
+  return acceptRevisionedMessage(cursor, message);
+}
+
+function acceptRevisionedMessage(
+  cursor: PresentationStateCursor,
+  message: Pick<PresentationStateMessage, "sessionId" | "revision">,
 ): { accepted: boolean; cursor: PresentationStateCursor } {
   if (cursor.retiredSessionIds.includes(message.sessionId)) {
     return { accepted: false, cursor };
@@ -201,6 +393,27 @@ export function acceptPresentationState(
         : cursor.retiredSessionIds,
     },
   };
+}
+
+export function acceptPresentationScratchState(
+  cursor: PresentationScratchCursor,
+  message: PresentationScratchMessage,
+): { accepted: boolean; cursor: PresentationScratchCursor } {
+  return acceptRevisionedMessage(cursor, message);
+}
+
+export function acceptPresentationPortalMaskState(
+  cursor: PresentationPortalMaskCursor,
+  message: PresentationPortalMaskMessage,
+): { accepted: boolean; cursor: PresentationPortalMaskCursor } {
+  return acceptRevisionedMessage(cursor, message);
+}
+
+export function acceptPresentationInteractionState(
+  cursor: PresentationInteractionCursor,
+  message: PresentationInteractionMessage,
+): { accepted: boolean; cursor: PresentationInteractionCursor } {
+  return acceptRevisionedMessage(cursor, message);
 }
 
 export function createAudienceConnectionState(): AudienceConnectionState {
@@ -282,4 +495,94 @@ function isNonEmptyString(value: unknown): value is string {
 
 function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
+}
+
+function isScratchSegment(value: unknown): value is ScratchSegment {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return [value.fromX, value.fromY, value.toX, value.toY].every((coordinate) => (
+    typeof coordinate === "number" &&
+    Number.isFinite(coordinate) &&
+    coordinate >= 0 &&
+    coordinate <= 1
+  ));
+}
+
+function isPortalMaskRect(value: unknown): value is PortalMaskRect {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const coordinates = [value.x, value.y, value.width, value.height];
+
+  if (!coordinates.every((coordinate) => (
+    typeof coordinate === "number" &&
+    Number.isFinite(coordinate) &&
+    coordinate >= 0 &&
+    coordinate <= 1
+  ))) {
+    return false;
+  }
+
+  return typeof value.x === "number" &&
+    typeof value.y === "number" &&
+    typeof value.width === "number" &&
+    typeof value.height === "number" &&
+    value.width > 0 &&
+    value.height > 0 &&
+    value.x + value.width <= 1 &&
+    value.y + value.height <= 1;
+}
+
+function isPresentationInteractionState(
+  value: unknown,
+): value is PresentationInteractionState {
+  if (!isRecord(value) || !isNonEmptyString(value.frameId)) {
+    return false;
+  }
+
+  if (value.pointer !== undefined && !isNormalizedPoint(value.pointer)) {
+    return false;
+  }
+
+  if (value.exposureScoreId !== undefined && !isNonEmptyString(value.exposureScoreId)) {
+    return false;
+  }
+
+  if (
+    value.exposureCollectionScroll !== undefined &&
+    !isPresentationCollectionScrollState(value.exposureCollectionScroll)
+  ) {
+    return false;
+  }
+
+  return value.exposureMaskStep === undefined ||
+    value.exposureMaskStep === 1 ||
+    value.exposureMaskStep === 2 ||
+    value.exposureMaskStep === 3 ||
+    value.exposureMaskStep === 4;
+}
+
+function isPresentationCollectionScrollState(
+  value: unknown,
+): value is PresentationCollectionScrollState {
+  return isRecord(value) &&
+    typeof value.startedAt === "number" &&
+    Number.isFinite(value.startedAt) &&
+    value.startedAt >= 0 &&
+    typeof value.speed === "number" &&
+    Number.isFinite(value.speed) &&
+    value.speed >= 0.25 &&
+    value.speed <= 4;
+}
+
+function isNormalizedPoint(value: unknown): value is PresentationPointerPosition {
+  return isRecord(value) && [value.x, value.y].every((coordinate) => (
+    typeof coordinate === "number" &&
+    Number.isFinite(coordinate) &&
+    coordinate >= 0 &&
+    coordinate <= 1
+  ));
 }

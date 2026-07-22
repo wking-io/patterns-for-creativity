@@ -1,19 +1,32 @@
 import assert from "node:assert/strict";
 import {
+  acceptPresentationInteractionState,
+  acceptPresentationPortalMaskState,
   acceptPresentationState,
+  acceptPresentationScratchState,
   createAudienceBlackoutUrl,
   createAudienceConnectionState,
   createAudienceDisplayUrl,
   createAudiencePresenceMessage,
+  createPresentationInteractionCursor,
+  createPresentationInteractionMessage,
+  createPresentationPortalMaskCursor,
+  createPresentationPortalMaskMessage,
   createPresentationStateCursor,
   createPresentationStateMessage,
+  createPresentationScratchCursor,
+  createPresentationScratchMessage,
+  createPresentationScratchSnapshot,
   deliverPresentationMessage,
   getDeckViewMode,
   getInitialAudienceBlackout,
   parsePresentationMessage,
   reduceAudienceConnection,
 } from "../src/motion-deck/presentation-sync.js";
-import { getMotionStageBehavior } from "../src/motion-deck/stage-mode.js";
+import {
+  areMotionStagePropsEqual,
+  getMotionStageBehavior,
+} from "../src/motion-deck/stage-mode.js";
 
 assert.equal(getDeckViewMode(""), "deck");
 assert.equal(getDeckViewMode("?view=presenter"), "presenter");
@@ -71,6 +84,196 @@ assert.equal(
 );
 assert.equal(parsePresentationMessage({ ...initialState, version: 2 }, 29), undefined);
 assert.equal(parsePresentationMessage("not a message", 29), undefined);
+
+const scratchSegments = [
+  { fromX: 0.1, fromY: 0.2, toX: 0.3, toY: 0.4 },
+  { fromX: 0.3, fromY: 0.4, toX: 0.5, toY: 0.6 },
+];
+const scratchState = createPresentationScratchMessage(
+  "presenter-a",
+  0,
+  "replace",
+  scratchSegments,
+);
+assert.deepEqual(scratchState, {
+  type: "presentation-scratch",
+  version: 1,
+  sessionId: "presenter-a",
+  revision: 0,
+  mode: "replace",
+  segments: scratchSegments,
+});
+assert.deepEqual(parsePresentationMessage(scratchState, 29), scratchState);
+assert.equal(
+  parsePresentationMessage({
+    ...scratchState,
+    segments: [{ fromX: -0.1, fromY: 0.2, toX: 0.3, toY: 0.4 }],
+  }, 29),
+  undefined,
+  "scratch coordinates must stay normalized",
+);
+
+let scratchCursor = createPresentationScratchCursor();
+let scratchResult = acceptPresentationScratchState(scratchCursor, scratchState);
+assert.equal(scratchResult.accepted, true);
+scratchCursor = scratchResult.cursor;
+scratchResult = acceptPresentationScratchState(scratchCursor, scratchState);
+assert.equal(scratchResult.accepted, false, "duplicate scratch delivery is ignored");
+scratchResult = acceptPresentationScratchState(
+  scratchCursor,
+  createPresentationScratchMessage("presenter-a", 1, "append", [scratchSegments[1]]),
+);
+assert.equal(scratchResult.accepted, true, "new scratch segments are accepted in order");
+scratchCursor = scratchResult.cursor;
+
+const presenterReloadReset = createPresentationScratchSnapshot(
+  "presenter-reloaded",
+  0,
+  [],
+);
+assert.deepEqual(presenterReloadReset, {
+  type: "presentation-scratch",
+  version: 1,
+  sessionId: "presenter-reloaded",
+  revision: 0,
+  mode: "replace",
+  segments: [],
+});
+scratchResult = acceptPresentationScratchState(scratchCursor, presenterReloadReset);
+assert.equal(
+  scratchResult.accepted,
+  true,
+  "a reloaded presenter starts a new scratch session that can clear the audience",
+);
+
+const portalMaskRect = { x: 0.25, y: 0.2, width: 0.4, height: 0.3 };
+const portalMaskState = createPresentationPortalMaskMessage(
+  "presenter-a",
+  0,
+  portalMaskRect,
+);
+assert.deepEqual(portalMaskState, {
+  type: "presentation-portal-mask",
+  version: 1,
+  sessionId: "presenter-a",
+  revision: 0,
+  rect: portalMaskRect,
+});
+assert.deepEqual(parsePresentationMessage(portalMaskState, 29), portalMaskState);
+assert.equal(
+  parsePresentationMessage({
+    ...portalMaskState,
+    rect: { ...portalMaskRect, x: 0.7 },
+  }, 29),
+  undefined,
+  "portal mask bounds must stay normalized",
+);
+
+let portalMaskCursor = createPresentationPortalMaskCursor();
+let portalMaskResult = acceptPresentationPortalMaskState(
+  portalMaskCursor,
+  portalMaskState,
+);
+assert.equal(portalMaskResult.accepted, true);
+portalMaskCursor = portalMaskResult.cursor;
+portalMaskResult = acceptPresentationPortalMaskState(portalMaskCursor, portalMaskState);
+assert.equal(portalMaskResult.accepted, false, "duplicate portal mask delivery is ignored");
+portalMaskResult = acceptPresentationPortalMaskState(
+  portalMaskCursor,
+  createPresentationPortalMaskMessage(
+    "presenter-a",
+    1,
+    { ...portalMaskRect, x: 0.3 },
+  ),
+);
+assert.equal(portalMaskResult.accepted, true, "new portal mask state is accepted in order");
+
+const interactionState = {
+  frameId: "exposure-practice-sky-remembers",
+  pointer: { x: 0.45, y: 0.62 },
+  exposureCollectionScroll: { startedAt: 1_750_000_000_000, speed: 1.25 },
+  exposureMaskStep: 3 as const,
+  exposureScoreId: "flowers-crown-of-embers",
+};
+const interactionMessage = createPresentationInteractionMessage(
+  "presenter-a",
+  0,
+  interactionState,
+);
+assert.deepEqual(interactionMessage, {
+  type: "presentation-interaction",
+  version: 1,
+  sessionId: "presenter-a",
+  revision: 0,
+  state: interactionState,
+});
+assert.deepEqual(parsePresentationMessage(interactionMessage, 29), interactionMessage);
+assert.equal(
+  parsePresentationMessage({
+    ...interactionMessage,
+    state: { ...interactionState, pointer: { x: 1.1, y: 0.5 } },
+  }, 29),
+  undefined,
+  "presentation pointer coordinates must stay normalized",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...interactionMessage,
+    state: { ...interactionState, exposureMaskStep: 5 },
+  }, 29),
+  undefined,
+  "exposure mask steps outside the rendered states are rejected",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...interactionMessage,
+    state: { ...interactionState, exposureScoreId: "" },
+  }, 29),
+  undefined,
+  "exposure score ids must be non-empty",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...interactionMessage,
+    state: {
+      ...interactionState,
+      exposureCollectionScroll: { startedAt: -1, speed: 1 },
+    },
+  }, 29),
+  undefined,
+  "collection scroll timestamps must be non-negative",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...interactionMessage,
+    state: {
+      ...interactionState,
+      exposureCollectionScroll: { startedAt: 1_750_000_000_000, speed: 4.5 },
+    },
+  }, 29),
+  undefined,
+  "collection scroll speeds must stay within the control range",
+);
+let interactionCursor = createPresentationInteractionCursor();
+let interactionResult = acceptPresentationInteractionState(
+  interactionCursor,
+  interactionMessage,
+);
+assert.equal(interactionResult.accepted, true);
+interactionCursor = interactionResult.cursor;
+interactionResult = acceptPresentationInteractionState(
+  interactionCursor,
+  interactionMessage,
+);
+assert.equal(interactionResult.accepted, false, "duplicate interaction delivery is ignored");
+interactionResult = acceptPresentationInteractionState(
+  interactionCursor,
+  createPresentationInteractionMessage("presenter-a", 1, {
+    frameId: "exposure-practice-sky-remembers",
+    exposureMaskStep: 1,
+  }),
+);
+assert.equal(interactionResult.accepted, true, "pointer hide and mask reset are accepted");
 
 let cursor = createPresentationStateCursor();
 let result = acceptPresentationState(cursor, initialState);
@@ -195,11 +398,75 @@ assert.equal(deliverPresentationMessage(initialState, [
 assert.deepEqual(getMotionStageBehavior("audience"), {
   animateContent: true,
   animateLayout: true,
+  audioEnabled: true,
   autoAdvance: false,
   autoplayMedia: true,
 });
+assert.deepEqual(getMotionStageBehavior("presenter"), {
+  animateContent: true,
+  animateLayout: true,
+  audioEnabled: false,
+  autoAdvance: true,
+  autoplayMedia: true,
+});
+assert.equal(getMotionStageBehavior("live").audioEnabled, true);
+assert.equal(getMotionStageBehavior("presenter").audioEnabled, false);
+assert.equal(getMotionStageBehavior("audience").audioEnabled, true);
+assert.equal(getMotionStageBehavior("preview").audioEnabled, false);
 assert.equal(getMotionStageBehavior("live").autoAdvance, true);
+assert.equal(getMotionStageBehavior("presenter").autoAdvance, true);
 assert.equal(getMotionStageBehavior("audience").autoAdvance, false);
 assert.equal(getMotionStageBehavior("preview").autoAdvance, false);
+
+const stableStageProps = {
+  direction: 1,
+  frame: { id: "scratch" },
+  isGridVisible: false,
+  interactionState,
+  mode: "live" as const,
+  onAdvance: () => undefined,
+  onInteractionState: () => undefined,
+  onPortalMaskRect: () => undefined,
+  portalMaskRect,
+  scratchSegments,
+  onScratchSegments: () => undefined,
+};
+assert.equal(
+  areMotionStagePropsEqual(stableStageProps, { ...stableStageProps }),
+  true,
+  "unrelated presenter rerenders do not restart the current slide",
+);
+assert.equal(
+  areMotionStagePropsEqual(stableStageProps, {
+    ...stableStageProps,
+    scratchSegments: [...scratchSegments],
+  }),
+  false,
+  "new scratch state still redraws the slide",
+);
+assert.equal(
+  areMotionStagePropsEqual(stableStageProps, {
+    ...stableStageProps,
+    portalMaskRect: { ...portalMaskRect },
+  }),
+  false,
+  "new portal mask state still redraws the slide",
+);
+assert.equal(
+  areMotionStagePropsEqual(stableStageProps, {
+    ...stableStageProps,
+    interactionState: { ...interactionState },
+  }),
+  false,
+  "new pointer or exposure mask state still redraws the slide",
+);
+assert.equal(
+  areMotionStagePropsEqual(stableStageProps, {
+    ...stableStageProps,
+    frame: { id: "next" },
+  }),
+  false,
+  "navigation still renders the new frame",
+);
 
 console.log("presentation sync tests passed");

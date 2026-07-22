@@ -1,5 +1,14 @@
-import { useEffect, useRef } from "react";
+import {
+  useEffect,
+  useRef,
+  type PointerEvent as ReactPointerEvent,
+  type TouchEvent as ReactTouchEvent,
+} from "react";
 import { motion } from "motion/react";
+import type {
+  PresentationPointerPosition,
+  ScratchSegment,
+} from "../../motion-deck/presentation-sync";
 import sucksUrl from "./sucks.webp";
 
 type ScratchPoint = {
@@ -10,13 +19,15 @@ type ScratchPoint = {
 
 type ScratchRevealSlideProps = {
   className?: string;
-  isAnimated?: boolean;
+  isInteractive?: boolean;
+  onPointerChange?: (pointer?: PresentationPointerPosition) => void;
+  onScratchSegments?: (segments: ScratchSegment[]) => void;
+  scratchSegments?: readonly ScratchSegment[];
+  showCompletedWhenStatic?: boolean;
 };
 
 const scratchRowCount = 7;
 const scratchPointsPerRow = 140;
-const scratchAnimationDelay = 360;
-const scratchAnimationDuration = 4200;
 
 function createScratchPoints(width: number, height: number): ScratchPoint[] {
   const points: ScratchPoint[] = [];
@@ -50,12 +61,6 @@ function drawScratchSegments(
   endIndex: number,
   height: number,
 ) {
-  context.globalCompositeOperation = "destination-out";
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  context.lineWidth = height * 0.145;
-  context.strokeStyle = "#000000";
-
   for (let index = Math.max(1, startIndex); index <= endIndex; index += 1) {
     const currentPoint = points[index];
     const previousPoint = points[index - 1];
@@ -64,18 +69,122 @@ function drawScratchSegments(
       continue;
     }
 
-    context.beginPath();
-    context.moveTo(previousPoint.x, previousPoint.y);
-    context.lineTo(currentPoint.x, currentPoint.y);
-    context.stroke();
+    drawCoinEdgeStroke(context, previousPoint, currentPoint, height);
   }
+}
+
+function drawCoinEdgeStroke(
+  context: CanvasRenderingContext2D,
+  from: Pick<ScratchPoint, "x" | "y">,
+  to: Pick<ScratchPoint, "x" | "y">,
+  height: number,
+) {
+  const deltaX = to.x - from.x;
+  const deltaY = to.y - from.y;
+  const distance = Math.hypot(deltaX, deltaY);
+
+  if (distance < 0.5) {
+    return;
+  }
+
+  const edgeLength = height * 0.1;
+  const edgeThickness = Math.max(1.5, height * 0.011);
+  const stampSpacing = Math.max(1, edgeThickness * 0.7);
+  const stampCount = Math.max(1, Math.ceil(distance / stampSpacing));
+  const edgeAngle = Math.atan2(deltaY, deltaX) + Math.PI / 2;
+
+  context.globalCompositeOperation = "destination-out";
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.lineWidth = edgeThickness;
+  context.strokeStyle = "#000000";
+
+  for (let index = 1; index <= stampCount; index += 1) {
+    const progress = index / stampCount;
+    const x = from.x + deltaX * progress;
+    const y = from.y + deltaY * progress;
+
+    context.save();
+    context.translate(x, y);
+    context.rotate(edgeAngle);
+    context.beginPath();
+    context.moveTo(-edgeLength / 2, 0);
+    context.quadraticCurveTo(0, -edgeThickness * 0.45, edgeLength / 2, 0);
+    context.stroke();
+    context.restore();
+  }
+}
+
+function getScratchPoint(
+  canvas: HTMLCanvasElement,
+  clientX: number,
+  clientY: number,
+) {
+  const bounds = canvas.getBoundingClientRect();
+
+  return {
+    x: clientX - bounds.left,
+    y: clientY - bounds.top,
+  };
+}
+
+function eraseScratchStroke(
+  canvas: HTMLCanvasElement,
+  from: Pick<ScratchPoint, "x" | "y">,
+  to: Pick<ScratchPoint, "x" | "y">,
+) {
+  const context = canvas.getContext("2d");
+  const bounds = canvas.getBoundingClientRect();
+
+  if (!context || bounds.height < 1) {
+    return;
+  }
+
+  drawCoinEdgeStroke(context, from, to, bounds.height);
+}
+
+function drawNormalizedScratchSegments(
+  context: CanvasRenderingContext2D,
+  segments: readonly ScratchSegment[],
+  width: number,
+  height: number,
+) {
+  for (const segment of segments) {
+    drawCoinEdgeStroke(
+      context,
+      { x: segment.fromX * width, y: segment.fromY * height },
+      { x: segment.toX * width, y: segment.toY * height },
+      height,
+    );
+  }
+}
+
+function normalizeScratchSegment(
+  from: Pick<ScratchPoint, "x" | "y">,
+  to: Pick<ScratchPoint, "x" | "y">,
+  width: number,
+  height: number,
+): ScratchSegment {
+  return {
+    fromX: Math.min(1, Math.max(0, from.x / width)),
+    fromY: Math.min(1, Math.max(0, from.y / height)),
+    toX: Math.min(1, Math.max(0, to.x / width)),
+    toY: Math.min(1, Math.max(0, to.y / height)),
+  };
 }
 
 export function ScratchRevealSlide({
   className = "",
-  isAnimated = true,
+  isInteractive = true,
+  onPointerChange,
+  onScratchSegments,
+  scratchSegments = [],
+  showCompletedWhenStatic = false,
 }: ScratchRevealSlideProps) {
+  const slideRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const activePointerRef = useRef<number | undefined>(undefined);
+  const lastScratchPointRef = useRef<Pick<ScratchPoint, "x" | "y"> | undefined>(undefined);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -84,11 +193,7 @@ export function ScratchRevealSlide({
       return undefined;
     }
 
-    let animationFrame = 0;
-
     const render = () => {
-      window.cancelAnimationFrame(animationFrame);
-
       const bounds = canvas.getBoundingClientRect();
 
       if (bounds.width < 1 || bounds.height < 1) {
@@ -111,40 +216,17 @@ export function ScratchRevealSlide({
         .trim() || "#f3f1f1";
       context.fillRect(0, 0, bounds.width, bounds.height);
 
-      const points = createScratchPoints(bounds.width, bounds.height);
-      const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-      if (!isAnimated || prefersReducedMotion) {
-        drawScratchSegments(context, points, 0, points.length - 1, bounds.height);
-        return;
-      }
-
-      let lastPointIndex = 0;
-      const startTime = performance.now() + scratchAnimationDelay;
-
-      const animate = (time: number) => {
-        const linearProgress = Math.min(
-          1,
-          Math.max(0, (time - startTime) / scratchAnimationDuration),
-        );
-        const easedProgress = linearProgress * linearProgress * (3 - 2 * linearProgress);
-        const nextPointIndex = Math.floor(easedProgress * (points.length - 1));
-
-        drawScratchSegments(
+      if (scratchSegments.length > 0) {
+        drawNormalizedScratchSegments(
           context,
-          points,
-          lastPointIndex,
-          nextPointIndex,
+          scratchSegments,
+          bounds.width,
           bounds.height,
         );
-        lastPointIndex = nextPointIndex;
-
-        if (linearProgress < 1) {
-          animationFrame = window.requestAnimationFrame(animate);
-        }
-      };
-
-      animationFrame = window.requestAnimationFrame(animate);
+      } else if (showCompletedWhenStatic) {
+        const points = createScratchPoints(bounds.width, bounds.height);
+        drawScratchSegments(context, points, 0, points.length - 1, bounds.height);
+      }
     };
 
     const resizeObserver = new ResizeObserver(render);
@@ -152,33 +234,166 @@ export function ScratchRevealSlide({
     render();
 
     return () => {
-      window.cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
     };
-  }, [isAnimated]);
+  }, [scratchSegments, showCompletedWhenStatic]);
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!isInteractive) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    activePointerRef.current = event.pointerId;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    onPointerChange?.(getNormalizedPointerPosition(
+      slideRef.current ?? event.currentTarget,
+      event.clientX,
+      event.clientY,
+    ));
+
+    const point = getScratchPoint(event.currentTarget, event.clientX, event.clientY);
+    lastScratchPointRef.current = point;
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (!isInteractive) {
+      return;
+    }
+
+    onPointerChange?.(getNormalizedPointerPosition(
+      slideRef.current ?? event.currentTarget,
+      event.clientX,
+      event.clientY,
+    ));
+
+    if (activePointerRef.current !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const reportedCoalescedEvents = event.nativeEvent.getCoalescedEvents?.();
+    const coalescedEvents = reportedCoalescedEvents && reportedCoalescedEvents.length > 0
+      ? reportedCoalescedEvents
+      : [event.nativeEvent];
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const emittedSegments: ScratchSegment[] = [];
+    let previousPoint = lastScratchPointRef.current;
+
+    for (const coalescedEvent of coalescedEvents) {
+      const nextPoint = getScratchPoint(
+        event.currentTarget,
+        coalescedEvent.clientX,
+        coalescedEvent.clientY,
+      );
+
+      const segmentStart = previousPoint ?? nextPoint;
+      eraseScratchStroke(event.currentTarget, segmentStart, nextPoint);
+
+      if (previousPoint && bounds.width > 0 && bounds.height > 0) {
+        emittedSegments.push(normalizeScratchSegment(
+          previousPoint,
+          nextPoint,
+          bounds.width,
+          bounds.height,
+        ));
+      }
+
+      previousPoint = nextPoint;
+    }
+
+    lastScratchPointRef.current = previousPoint;
+
+    if (emittedSegments.length > 0) {
+      onScratchSegments?.(emittedSegments);
+    }
+  };
+
+  const finishScratching = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    if (activePointerRef.current !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    activePointerRef.current = undefined;
+    lastScratchPointRef.current = undefined;
+  };
+
+  const stopTouchNavigation = (event: ReactTouchEvent<HTMLCanvasElement>) => {
+    if (isInteractive) {
+      event.stopPropagation();
+    }
+  };
 
   return (
     <div
-      aria-label="A scratch-off field revealing a hidden shape"
+      aria-label={isInteractive
+        ? "Scratch the white field to reveal the words Help me"
+        : "A scratched-off field revealing the words Help me"}
       className={`scratch-reveal-slide ${className}`.trim()}
+      ref={slideRef}
       role="img"
     >
       <div className="scratch-reveal-slide__field">
         <svg
           aria-hidden="true"
           className="scratch-reveal-slide__shape"
+          preserveAspectRatio="none"
           viewBox="0 0 1000 500"
         >
-          <path d="M500 18 578 143 724 70 704 218 884 248 711 298 748 462 582 364 500 486 425 353 260 446 298 288 116 250 297 211 260 58 424 142Z" />
+          <text
+            lengthAdjust="spacingAndGlyphs"
+            textAnchor="middle"
+            textLength="470"
+            x="500"
+            y="365"
+          >
+            HELP ME!
+          </text>
         </svg>
         <canvas
           aria-hidden="true"
-          className="scratch-reveal-slide__canvas"
+          className={[
+            "scratch-reveal-slide__canvas",
+            isInteractive ? "scratch-reveal-slide__canvas--interactive" : "",
+            scratchSegments.length > 0 ? "scratch-reveal-slide__canvas--scratching" : "",
+          ].join(" ")}
+          onPointerCancel={finishScratching}
+          onPointerDown={handlePointerDown}
+          onPointerLeave={() => onPointerChange?.(undefined)}
+          onPointerMove={handlePointerMove}
+          onPointerUp={finishScratching}
+          onTouchCancel={stopTouchNavigation}
+          onTouchEnd={stopTouchNavigation}
+          onTouchMove={stopTouchNavigation}
+          onTouchStart={stopTouchNavigation}
           ref={canvasRef}
         />
       </div>
     </div>
   );
+}
+
+function getNormalizedPointerPosition(
+  element: HTMLElement,
+  clientX: number,
+  clientY: number,
+): PresentationPointerPosition {
+  const bounds = element.getBoundingClientRect();
+
+  return {
+    x: Math.min(1, Math.max(0, (clientX - bounds.left) / bounds.width)),
+    y: Math.min(1, Math.max(0, (clientY - bounds.top) / bounds.height)),
+  };
 }
 
 type FirstIdeaSlideProps = {

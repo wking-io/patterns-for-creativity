@@ -70,8 +70,7 @@
   color: #9e9690;
 }
 
-.slide-organizer-button,
-.slide-organizer-nudge-actions button {
+.slide-organizer-button {
   background: #292624;
   border: 1px solid #4c4641;
   border-radius: 7px;
@@ -87,22 +86,19 @@
   padding: 8px 14px;
 }
 
-.slide-organizer-button:hover:not(:disabled),
-.slide-organizer-nudge-actions button:hover:not(:disabled) {
+.slide-organizer-button:hover:not(:disabled) {
   background: #37322f;
   border-color: #6a615b;
 }
 
 .slide-organizer-button:focus-visible,
 .slide-organizer-drag-handle:focus-visible,
-.slide-organizer-nudge-actions button:focus-visible,
 .slide-organizer-handoff summary:focus-visible {
   outline: 2px solid var(--organizer-accent);
   outline-offset: 2px;
 }
 
-.slide-organizer-button:disabled,
-.slide-organizer-nudge-actions button:disabled {
+.slide-organizer-button:disabled {
   cursor: not-allowed;
   opacity: 0.38;
 }
@@ -116,6 +112,32 @@
 .slide-organizer-button--primary:hover:not(:disabled) {
   background: #ff705e;
   border-color: #ff9184;
+}
+
+.slide-organizer-selection-bar {
+  align-items: center;
+  background: #1a1817;
+  border: 1px solid var(--organizer-border);
+  border-radius: 10px;
+  color: #bfb8b2;
+  display: flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  justify-content: space-between;
+  margin: 0 auto 18px;
+  max-width: 1800px;
+  min-height: 50px;
+  padding: 7px 9px 7px 14px;
+}
+
+.slide-organizer-selection-bar > div {
+  display: flex;
+  gap: 7px;
+}
+
+.slide-organizer-selection-bar .slide-organizer-button {
+  min-height: 34px;
+  padding-block: 5px;
 }
 
 .slide-organizer-grid {
@@ -139,6 +161,13 @@
 .slide-organizer-card[data-dragging="true"] {
   opacity: 0.36;
   transform: scale(0.98);
+}
+
+.slide-organizer-card[data-selected="true"] {
+  border-color: var(--organizer-accent);
+  box-shadow:
+    0 0 0 2px rgb(255 91 70 / 22%),
+    0 12px 30px rgb(0 0 0 / 16%);
 }
 
 .slide-organizer-card[data-drop-edge="before"]::before,
@@ -165,9 +194,15 @@
   aspect-ratio: 3754 / 2112;
   background: #050505;
   border-radius: 10px 10px 0 0;
+  cursor: grab;
   overflow: hidden;
-  pointer-events: none;
   position: relative;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.slide-organizer-card[data-dragging="true"] .slide-organizer-thumbnail {
+  cursor: grabbing;
 }
 
 .slide-organizer-stage-shell {
@@ -175,6 +210,7 @@
   aspect-ratio: 3754 / 2112;
   container-type: size;
   height: 100%;
+  pointer-events: none;
   position: relative;
   width: 100%;
 }
@@ -205,6 +241,43 @@
   top: 8px;
 }
 
+.slide-organizer-select-control {
+  align-items: center;
+  background: rgb(9 9 9 / 82%);
+  border: 1px solid rgb(255 255 255 / 28%);
+  border-radius: 6px;
+  color: transparent;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 900;
+  height: 28px;
+  justify-content: center;
+  padding: 0;
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 28px;
+}
+
+.slide-organizer-select-control:hover {
+  background: rgb(37 34 32 / 94%);
+  border-color: rgb(255 255 255 / 58%);
+  color: #948e89;
+}
+
+.slide-organizer-select-control[aria-pressed="true"] {
+  background: var(--organizer-accent);
+  border-color: #ff8b7c;
+  color: #160805;
+}
+
+.slide-organizer-select-control:focus-visible {
+  outline: 2px solid #ffffff;
+  outline-offset: 2px;
+}
+
 .slide-organizer-card-footer {
   align-items: center;
   display: flex;
@@ -223,6 +296,7 @@
   font-size: 1.25rem;
   justify-content: center;
   min-width: 24px;
+  touch-action: none;
   user-select: none;
 }
 
@@ -258,17 +332,6 @@
 .slide-organizer-card-title code {
   color: #8e8781;
   font-size: 0.67rem;
-}
-
-.slide-organizer-nudge-actions {
-  display: flex;
-  gap: 4px;
-}
-
-.slide-organizer-nudge-actions button {
-  height: 30px;
-  padding: 0;
-  width: 30px;
 }
 
 .slide-organizer-handoff {
@@ -336,6 +399,12 @@
     align-items: flex-start;
     flex: 1 0 100%;
     margin: 0 0 4px;
+  }
+
+  .slide-organizer-selection-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
   }
 
   .slide-organizer-handoff {

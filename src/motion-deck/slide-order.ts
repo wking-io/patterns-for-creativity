@@ -12,24 +12,35 @@ export function reorderFrameIds(
   targetId: string,
   edge: SlideOrderDropEdge,
 ): string[] {
-  if (draggedId === targetId) {
-    return [...frameIds];
-  }
+  return reorderFrameIdGroup(frameIds, [draggedId], targetId, edge);
+}
 
-  const draggedIndex = frameIds.indexOf(draggedId);
+export function reorderFrameIdGroup(
+  frameIds: readonly string[],
+  draggedIds: readonly string[],
+  targetId: string,
+  edge: SlideOrderDropEdge,
+): string[] {
+  const draggedIdSet = new Set(draggedIds);
+  const orderedDraggedIds = frameIds.filter((frameId) => draggedIdSet.has(frameId));
+
   const targetIndex = frameIds.indexOf(targetId);
 
-  if (draggedIndex === -1 || targetIndex === -1) {
+  if (
+    orderedDraggedIds.length === 0 ||
+    targetIndex === -1 ||
+    draggedIdSet.has(targetId)
+  ) {
     return [...frameIds];
   }
 
-  const reordered = frameIds.filter((frameId) => frameId !== draggedId);
+  const reordered = frameIds.filter((frameId) => !draggedIdSet.has(frameId));
   const remainingTargetIndex = reordered.indexOf(targetId);
   const insertionIndex = edge === "after"
     ? remainingTargetIndex + 1
     : remainingTargetIndex;
 
-  reordered.splice(insertionIndex, 0, draggedId);
+  reordered.splice(insertionIndex, 0, ...orderedDraggedIds);
   return reordered;
 }
 

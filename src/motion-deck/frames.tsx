@@ -6,6 +6,7 @@ import type { FeedbackSlideVariant } from "../slides/14-feedback";
 import type { FeedbackPracticeSlideVariant } from "../slides/15-feedback-practice";
 import type { FrictionSlideVariant } from "../slides/16-friction";
 import type { ApertureSlideVariant } from "../slides/17-friction-practice";
+import type { ExposurePracticeDemoVariant } from "../slides/19-exposure-practice";
 import type { CatalystOutcomesStep } from "../slides/13-catalyst";
 import type { IdeasMediaVariant } from "../slides/20-ideas";
 import type { CatalystParticleCounts } from "../slides/20-catalyst-collision";
@@ -14,6 +15,7 @@ import type { RealityOutcomesStep } from "../slides/23-reality";
 import type { BuildingSoftwareQuoteVariant } from "../slides/24-output-not-artifacts";
 import type { FinalPathStage } from "../slides/28-final-path";
 import type { ShortenLoopPairedMediaVariant } from "../slides/30-shorten-loop-practice";
+import type { OutroMediaVariant } from "../slides/32-outro";
 import type { SlideKind } from "../slides/SlideFrame";
 
 export type MotionDeckFrame = {
@@ -21,6 +23,7 @@ export type MotionDeckFrame = {
   kind: SlideKind;
   label: string;
   sourceId?: string;
+  isBlank?: boolean;
   isStatic?: boolean;
   apertureVariant?: ApertureSlideVariant;
   catalystOutcomesStep?: CatalystOutcomesStep;
@@ -29,13 +32,21 @@ export type MotionDeckFrame = {
   creativeProcessStage?: CreativeProcessStage;
   feedbackPracticeVariant?: FeedbackPracticeSlideVariant;
   feedbackVariant?: FeedbackSlideVariant;
+  exposurePracticeDemoVariant?: ExposurePracticeDemoVariant;
   finalPathStage?: FinalPathStage;
   frictionVariant?: FrictionSlideVariant;
   ideasMediaVariant?: IdeasMediaVariant;
   languageTweetVariant?: LanguageTweetVariant;
+  outroVariant?: OutroMediaVariant;
   buildingSoftwareQuoteVariant?: BuildingSoftwareQuoteVariant;
   showLessSacredPaperVideo?: boolean;
   showFirstIdeaStamp?: boolean;
+  tastePatternCopy?: {
+    headline: string;
+    iconVariant?: "pattern" | "polyhedron";
+    leftLabel: string;
+    rightLabel: string;
+  };
   shortenLoopPairedMediaVariant?: ShortenLoopPairedMediaVariant;
   outputVariant?: OutputSlideVariant;
   realityOutcomesStep?: RealityOutcomesStep;
@@ -295,6 +306,14 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     transition: { duration: 0 },
   },
   {
+    id: "catalyst-outcomes-feedback",
+    sourceId: "catalyst-outcomes",
+    kind: "constrained-dark",
+    label: "Catalysts — Feedback to Evidence",
+    catalystOutcomesStep: 1,
+    transition: { duration: 0 },
+  },
+  {
     id: "friction",
     kind: "contained-dark",
     label: "Common Friction",
@@ -320,6 +339,13 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     id: "friction-practice-ask-why",
     kind: "constrained-dark",
     label: "Friction Practice — Ask Why",
+    transition: { duration: 0 },
+  },
+  {
+    id: "friction-practice-aperture-prompt",
+    kind: "constrained-dark",
+    label: "Friction Practice — Change Your Aperture",
+    feedbackPracticeVariant: "friction-aperture",
     transition: { duration: 0 },
   },
   {
@@ -361,21 +387,6 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     transition: { duration: 0 },
   },
   {
-    id: "catalyst-outcomes",
-    kind: "constrained-dark",
-    label: "Catalysts — Outcomes",
-    catalystOutcomesStep: 0,
-    transition: { duration: 0 },
-  },
-  {
-    id: "catalyst-outcomes-feedback",
-    sourceId: "catalyst-outcomes",
-    kind: "constrained-dark",
-    label: "Catalysts — Feedback to Evidence",
-    catalystOutcomesStep: 1,
-    transition: { duration: 0 },
-  },
-  {
     id: "catalyst-outcomes-friction",
     sourceId: "catalyst-outcomes",
     kind: "constrained-dark",
@@ -389,6 +400,40 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     kind: "constrained-dark",
     label: "Catalysts — Exposure to Possibility",
     catalystOutcomesStep: 3,
+    transition: { duration: 0 },
+  },
+  {
+    id: "exposure-practice-sky-remembers",
+    kind: "full-dark",
+    label: "Exposure Practice — The Sky Remembers",
+    transition: { duration: 0 },
+  },
+  {
+    id: "exposure-practice-map-overflow",
+    kind: "contained-light",
+    label: "Exposure Practice — Map Overflow",
+    exposurePracticeDemoVariant: "map-overflow",
+    transition: { duration: 0 },
+  },
+  {
+    id: "exposure-practice-soundfall",
+    kind: "constrained-dark",
+    label: "Exposure Practice — Soundfall",
+    exposurePracticeDemoVariant: "soundfall",
+    transition: { duration: 0 },
+  },
+  {
+    id: "exposure-practice-portal",
+    kind: "constrained-dark",
+    label: "Exposure Practice — Portal",
+    exposurePracticeDemoVariant: "portal",
+    transition: { duration: 0 },
+  },
+  {
+    id: "exposure-practice-sky-remembers-reprise",
+    sourceId: "exposure-practice-sky-remembers",
+    kind: "full-dark",
+    label: "Exposure Practice — The Sky Remembers (Reprise)",
     transition: { duration: 0 },
   },
   {
@@ -409,6 +454,12 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     id: "exposure-practice-mymind",
     kind: "constrained-dark",
     label: "Exposure Practice — MyMind",
+    transition: { duration: 0 },
+  },
+  {
+    id: "exposure-practice-image-placeholder",
+    kind: "constrained-dark",
+    label: "Exposure Practice — Collection",
     transition: { duration: 0 },
   },
   {
@@ -497,55 +548,9 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     transition: { duration: 0 },
   },
   {
-    id: "ideas-practice-language-power",
-    kind: "constrained-gradient",
-    label: "Ideas Practice — Language Is Power",
-    feedbackPracticeVariant: "language-is-power",
-    transition: { duration: 0 },
-  },
-  {
-    id: "creative-process-reality",
-    sourceId: "creative-process",
-    kind: "contained-light",
-    label: "Creative Process — Reality",
-    creativeProcessStage: "reality",
-    transition: { duration: 0 },
-  },
-  {
-    id: "reality-practice-output-artifacts",
-    kind: "constrained-dark",
-    label: "Reality Practice — The Output Is Not the Artifacts",
-    feedbackPracticeVariant: "reality-output-artifacts",
-    transition: { duration: 0 },
-  },
-  {
-    id: "output-not-artifacts-matt-tweet",
-    kind: "constrained-dark",
-    label: "Output, Not Artifacts — Matt Wensing",
-    transition: { duration: 0 },
-  },
-  {
     id: "master-medium-teach",
     kind: "constrained-gradient",
     label: "Master Your Medium — Teach",
-    transition: {
-      duration: 0.54,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-  {
-    id: "master-medium-prototype",
-    kind: "constrained-gradient",
-    label: "Master Your Medium — Prototype",
-    transition: {
-      duration: 0.54,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-  {
-    id: "master-medium-sideshow",
-    kind: "constrained-gradient",
-    label: "Master Your Medium — Sideshow",
     transition: {
       duration: 0.54,
       ease: [0.16, 1, 0.3, 1],
@@ -558,11 +563,251 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     transition: { duration: 0 },
   },
   {
+    id: "master-medium-sideshow",
+    kind: "constrained-gradient",
+    label: "Master Your Medium — Sideshow",
+    transition: {
+      duration: 0.54,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+  {
+    id: "ideas-practice-language-power",
+    kind: "constrained-gradient",
+    label: "Ideas Practice — Language Is Power",
+    feedbackPracticeVariant: "language-is-power",
+    transition: { duration: 0 },
+  },
+  {
+    id: "language-tweet-animation-vocabulary",
+    kind: "constrained-dark",
+    label: "Language Is Power — Animation Vocabulary",
+    languageTweetVariant: "animation-vocabulary",
+    transition: { duration: 0 },
+  },
+  {
+    id: "language-index-how",
+    kind: "page",
+    label: "Language Is Power — Index How",
+    transition: { duration: 0 },
+  },
+  {
+    id: "language-tweet-domain-expertise",
+    kind: "constrained-dark",
+    label: "Language Is Power — Domain Expertise",
+    languageTweetVariant: "domain-expertise",
+    transition: { duration: 0 },
+  },
+  {
+    id: "creative-process-reality",
+    sourceId: "creative-process",
+    kind: "contained-light",
+    label: "Creative Process — Reality",
+    creativeProcessStage: "reality",
+    transition: { duration: 0 },
+  },
+  {
+    id: "reality-lossy-compression",
+    kind: "contained-dark",
+    label: "Reality — Lossy Compression",
+    transition: { duration: 0 },
+  },
+  {
+    id: "reality-outcomes",
+    kind: "constrained-dark",
+    label: "Reality Outcomes",
+    realityOutcomesStep: 0,
+    transition: { duration: 0 },
+  },
+  {
+    id: "reality-outcomes-abstraction",
+    sourceId: "reality-outcomes",
+    kind: "constrained-dark",
+    label: "Reality Outcomes — Abstraction",
+    realityOutcomesStep: 1,
+    transition: { duration: 0 },
+  },
+  {
+    id: "reality-outcomes-prototype",
+    sourceId: "reality-outcomes",
+    kind: "constrained-dark",
+    label: "Reality Outcomes — Prototype",
+    realityOutcomesStep: 2,
+    transition: { duration: 0 },
+  },
+  {
+    id: "reality-outcomes-joke",
+    sourceId: "reality-outcomes",
+    kind: "constrained-dark",
+    label: "Reality Outcomes — Joke",
+    realityOutcomesStep: 3,
+    transition: { duration: 0 },
+  },
+  {
+    id: "reality-practice-output-artifacts",
+    kind: "constrained-dark",
+    label: "Reality Practice — The Output Is Not the Artifacts",
+    feedbackPracticeVariant: "reality-output-artifacts",
+    transition: { duration: 0 },
+  },
+  {
+    id: "output-not-artifacts-cal",
+    kind: "full-dark",
+    label: "Output, Not Artifacts — Cal",
+    transition: { duration: 0 },
+  },
+  {
+    id: "output-not-artifacts-building-is-learning",
+    kind: "constrained-dark",
+    label: "Output, Not Artifacts — Building Software Is Learning",
+    transition: { duration: 0 },
+  },
+  {
+    id: "output-not-artifacts-building-is-learning-quote-1",
+    kind: "constrained-dark",
+    label: "Output, Not Artifacts — Building Software Is Learning Quote 1",
+    buildingSoftwareQuoteVariant: "quote-1",
+    transition: { duration: 0 },
+  },
+  {
+    id: "output-not-artifacts-building-is-learning-quote-2",
+    kind: "constrained-dark",
+    label: "Output, Not Artifacts — Building Software Is Learning Quote 2",
+    buildingSoftwareQuoteVariant: "quote-2",
+    transition: { duration: 0 },
+  },
+  {
+    id: "output-not-artifacts-matt-tweet",
+    kind: "constrained-dark",
+    label: "Output, Not Artifacts — Matt Wensing",
+    transition: { duration: 0 },
+  },
+  {
+    id: "creative-process-taste-static",
+    sourceId: "creative-process",
+    kind: "contained-light",
+    label: "Creative Process — Before Taste",
+    creativeProcessStage: "reality",
+    isStatic: true,
+    transition: { duration: 0 },
+  },
+  {
     id: "creative-process-taste",
     sourceId: "creative-process",
     kind: "contained-light",
     label: "Creative Process — Taste",
     creativeProcessStage: "taste",
+    transition: { duration: 0 },
+  },
+  {
+    id: "taste-pattern-matching",
+    kind: "constrained-gradient",
+    label: "Taste — Pattern Matching Earned Through Pain",
+    transition: {
+      duration: 0.54,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+  {
+    id: "optimize-exploration-scratch",
+    kind: "constrained-gradient",
+    label: "Optimize for Exploration — Scratch Reveal",
+    transition: { duration: 0 },
+  },
+  {
+    id: "taste-practice-optimize-exploration",
+    kind: "constrained-gradient",
+    label: "Taste Practice — Optimize for Exploration",
+    feedbackPracticeVariant: "optimize-for-exploration",
+    transition: { duration: 0 },
+  },
+  {
+    id: "optimize-first-idea",
+    kind: "constrained-gradient",
+    label: "Optimize for Exploration — First Idea",
+    transition: { duration: 0 },
+  },
+  {
+    id: "optimize-first-idea-stamped",
+    sourceId: "optimize-first-idea",
+    kind: "constrained-gradient",
+    label: "Optimize for Exploration — First Idea Sucks",
+    showFirstIdeaStamp: true,
+    transition: { duration: 0 },
+  },
+  {
+    id: "taste-practice-image-placeholder",
+    kind: "full-dark",
+    label: "Taste Practice — Billie Eilish and Finneas",
+    transition: { duration: 0 },
+  },
+  {
+    id: "taste-practice-artifacts-less-sacred",
+    kind: "constrained-gradient",
+    label: "Taste Practice — Makes Artifacts Less Sacred",
+    feedbackPracticeVariant: "artifacts-less-sacred",
+    transition: { duration: 0 },
+  },
+  {
+    id: "less-sacred-eight-patterns",
+    kind: "constrained-gradient",
+    label: "Less Sacred — Eight Patterns",
+    transition: { duration: 0 },
+  },
+  {
+    id: "less-sacred-paper",
+    kind: "constrained-gradient",
+    label: "Less Sacred — Paper",
+    transition: { duration: 0 },
+  },
+  {
+    id: "less-sacred-paper-video",
+    sourceId: "less-sacred-paper",
+    kind: "constrained-gradient",
+    label: "Less Sacred — Paper Demonstration",
+    showLessSacredPaperVideo: true,
+    transition: { duration: 0 },
+  },
+  {
+    id: "master-medium-prototype",
+    kind: "constrained-gradient",
+    label: "Master Your Medium — Prototype",
+    transition: {
+      duration: 0.54,
+      ease: [0.16, 1, 0.3, 1],
+    },
+  },
+  {
+    id: "less-sacred-constraints",
+    kind: "constrained-gradient",
+    label: "Less Sacred — Constraints",
+    transition: { duration: 0 },
+  },
+  {
+    id: "less-sacred-quick-video",
+    kind: "constrained-dark",
+    label: "Less Sacred — Quick",
+    transition: { duration: 0 },
+  },
+  {
+    id: "less-sacred-smith-diction",
+    kind: "constrained-dark",
+    label: "Less Sacred — Smith Diction",
+    transition: { duration: 0 },
+  },
+  {
+    id: "less-sacred-gangprompt",
+    kind: "constrained-dark",
+    label: "Less Sacred — Gangprompting",
+    transition: { duration: 0 },
+  },
+  {
+    id: "creative-process-taste-reprise",
+    sourceId: "creative-process",
+    kind: "contained-light",
+    label: "Creative Process — Taste Reprise",
+    creativeProcessStage: "taste",
+    isStatic: true,
     transition: { duration: 0 },
   },
   {
@@ -605,192 +850,21 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     transition: { duration: 0 },
   },
   {
-    id: "taste-pattern-matching",
-    kind: "constrained-gradient",
-    label: "Taste — Pattern Matching Earned Through Pain",
-    transition: {
-      duration: 0.54,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-  {
-    id: "optimize-exploration-scratch",
-    kind: "constrained-gradient",
-    label: "Optimize for Exploration — Scratch Reveal",
-    transition: { duration: 0 },
-  },
-  {
-    id: "language-index-how",
-    kind: "page",
-    label: "Language Is Power — Index How",
-    transition: { duration: 0 },
-  },
-  {
-    id: "language-tweet-animation-vocabulary",
-    kind: "constrained-dark",
-    label: "Language Is Power — Animation Vocabulary",
-    languageTweetVariant: "animation-vocabulary",
-    transition: { duration: 0 },
-  },
-  {
-    id: "language-tweet-domain-expertise",
-    kind: "constrained-dark",
-    label: "Language Is Power — Domain Expertise",
-    languageTweetVariant: "domain-expertise",
-    transition: { duration: 0 },
-  },
-  {
-    id: "reality-outcomes",
-    kind: "constrained-dark",
-    label: "Reality Outcomes",
-    realityOutcomesStep: 0,
-    transition: { duration: 0 },
-  },
-  {
-    id: "reality-outcomes-paragraph",
-    sourceId: "reality-outcomes",
-    kind: "constrained-dark",
-    label: "Reality Outcomes — Paragraph",
-    realityOutcomesStep: 1,
-    transition: { duration: 0 },
-  },
-  {
-    id: "reality-outcomes-abstraction",
-    sourceId: "reality-outcomes",
-    kind: "constrained-dark",
-    label: "Reality Outcomes — Abstraction",
-    realityOutcomesStep: 2,
-    transition: { duration: 0 },
-  },
-  {
-    id: "reality-outcomes-prototype",
-    sourceId: "reality-outcomes",
-    kind: "constrained-dark",
-    label: "Reality Outcomes — Prototype",
-    realityOutcomesStep: 3,
-    transition: { duration: 0 },
-  },
-  {
-    id: "reality-outcomes-joke",
-    sourceId: "reality-outcomes",
-    kind: "constrained-dark",
-    label: "Reality Outcomes — Joke",
-    realityOutcomesStep: 4,
-    transition: { duration: 0 },
-  },
-  {
-    id: "reality-lossy-compression",
-    kind: "contained-dark",
-    label: "Reality — Lossy Compression",
-    transition: { duration: 0 },
-  },
-  {
-    id: "output-not-artifacts-cal",
-    kind: "full-dark",
-    label: "Output, Not Artifacts — Cal",
-    transition: { duration: 0 },
-  },
-  {
-    id: "output-not-artifacts-building-is-learning",
-    kind: "constrained-dark",
-    label: "Output, Not Artifacts — Building Software Is Learning",
-    transition: { duration: 0 },
-  },
-  {
-    id: "output-not-artifacts-building-is-learning-quote-1",
-    kind: "constrained-dark",
-    label: "Output, Not Artifacts — Building Software Is Learning Quote 1",
-    buildingSoftwareQuoteVariant: "quote-1",
-    transition: { duration: 0 },
-  },
-  {
-    id: "output-not-artifacts-building-is-learning-quote-2",
-    kind: "constrained-dark",
-    label: "Output, Not Artifacts — Building Software Is Learning Quote 2",
-    buildingSoftwareQuoteVariant: "quote-2",
-    transition: { duration: 0 },
-  },
-  {
-    id: "less-sacred-eight-patterns",
-    kind: "constrained-gradient",
-    label: "Less Sacred — Eight Patterns",
-    transition: { duration: 0 },
-  },
-  {
-    id: "less-sacred-constraints",
-    kind: "constrained-gradient",
-    label: "Less Sacred — Constraints",
-    transition: { duration: 0 },
-  },
-  {
-    id: "less-sacred-quick-video",
-    kind: "constrained-dark",
-    label: "Less Sacred — Quick",
-    transition: { duration: 0 },
-  },
-  {
-    id: "less-sacred-smith-diction",
-    kind: "constrained-dark",
-    label: "Less Sacred — Smith Diction",
-    transition: { duration: 0 },
-  },
-  {
-    id: "less-sacred-gangprompt",
-    kind: "constrained-dark",
-    label: "Less Sacred — Gangprompting",
-    transition: { duration: 0 },
-  },
-  {
-    id: "less-sacred-paper",
-    kind: "constrained-gradient",
-    label: "Less Sacred — Paper",
-    transition: { duration: 0 },
-  },
-  {
-    id: "less-sacred-paper-video",
-    sourceId: "less-sacred-paper",
-    kind: "constrained-gradient",
-    label: "Less Sacred — Paper Demonstration",
-    showLessSacredPaperVideo: true,
-    transition: { duration: 0 },
-  },
-  {
-    id: "taste-practice-optimize-exploration",
-    kind: "constrained-gradient",
-    label: "Taste Practice — Optimize for Exploration",
-    feedbackPracticeVariant: "optimize-for-exploration",
-    transition: { duration: 0 },
-  },
-  {
-    id: "optimize-first-idea",
-    kind: "constrained-gradient",
-    label: "Optimize for Exploration — First Idea",
-    transition: { duration: 0 },
-  },
-  {
-    id: "optimize-first-idea-stamped",
-    sourceId: "optimize-first-idea",
-    kind: "constrained-gradient",
-    label: "Optimize for Exploration — First Idea Sucks",
-    showFirstIdeaStamp: true,
-    transition: { duration: 0 },
-  },
-  {
     id: "shorten-the-loop",
     kind: "constrained-dark",
     label: "Shorten the Loop",
     transition: { duration: 0 },
   },
   {
-    id: "visual-creativity-collage",
-    kind: "full-dark",
-    label: "Visual Creativity — Collage",
-    transition: { duration: 0 },
-  },
-  {
     id: "shorten-loop-fidelity",
     kind: "constrained-gradient",
     label: "Shorten the Loop — Fidelity",
+    transition: { duration: 0 },
+  },
+  {
+    id: "visual-creativity-collage",
+    kind: "full-dark",
+    label: "Visual Creativity — Collage",
     transition: { duration: 0 },
   },
   {
@@ -827,23 +901,75 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     transition: { duration: 0 },
   },
   {
+    id: "conclusion-can-ai-do-your-job",
+    kind: "constrained-dark",
+    label: "Conclusion — Can AI Do Your Job?",
+    transition: { duration: 0 },
+  },
+  {
     id: "manufacturing-final",
     sourceId: "manufacturing",
     kind: "contained-light",
     label: "Manufacturing — Final",
-    transition: {
-      duration: 0.54,
-      ease: [0.16, 1, 0.3, 1],
-    },
+    isStatic: true,
+    transition: { duration: 0 },
   },
   {
     id: "creative-path-final",
     sourceId: "creative-path",
     kind: "contained-light",
     label: "Creative Path — Final",
+    isStatic: true,
+    transition: { duration: 0 },
+  },
+  {
+    id: "conclusion-worth-building",
+    kind: "constrained-gradient",
+    label: "Conclusion — Who Decides What Is Worth Building?",
+    tastePatternCopy: {
+      headline: "Who decides What is Worth Building?",
+      iconVariant: "polyhedron",
+      leftLabel: "Find what",
+      rightLabel: "is Possible",
+    },
     transition: {
       duration: 0.54,
       ease: [0.16, 1, 0.3, 1],
     },
+  },
+  {
+    id: "outro-snowflake",
+    kind: "constrained-dark",
+    label: "Outro — Snowflake",
+    outroVariant: "snowflake",
+    transition: { duration: 0 },
+  },
+  {
+    id: "outro-profile",
+    kind: "constrained-dark",
+    label: "Outro — Profile",
+    outroVariant: "profile",
+    transition: { duration: 0 },
+  },
+  {
+    id: "outro-riff-and-refine",
+    kind: "contained-dark",
+    label: "Outro — Riff and Refine",
+    outroVariant: "riff-and-refine",
+    transition: { duration: 0 },
+  },
+  {
+    id: "outro-no-one-asked-us",
+    kind: "contained-dark",
+    label: "Outro — No One Asked Us",
+    outroVariant: "no-one-asked-us",
+    transition: { duration: 0 },
+  },
+  {
+    id: "outro-thank-you",
+    kind: "constrained-dark",
+    label: "Outro — Thank You",
+    outroVariant: "thank-you",
+    transition: { duration: 0 },
   },
 ];

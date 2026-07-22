@@ -1,3 +1,4 @@
+import { useReducedMotion } from "motion/react";
 import { useId } from "react";
 import { StatementAxisSlide } from "../StatementAxisSlide";
 import lineLeftUrl from "../20-ideas/line-left.svg";
@@ -15,7 +16,6 @@ type MasterMediumSlideProps = {
 };
 
 const headline = "Creativity is capped by your ability to express it";
-
 const worldPathData = worldSvgMarkup.match(/<path d="([^"]+)"/)?.[1] ?? "";
 const worldPathParts = splitWorldPath(worldPathData);
 
@@ -34,7 +34,7 @@ export function MasterMediumSlide({
       ].join(" ").trim()}
       headline={headline}
       headlineShadow
-      icon={<AnimatedWorld />}
+      icon={<AnimatedWorld isAnimated={isAnimated} />}
       leftLabel="Mastery of"
       leftLineUrl={lineLeftUrl}
       rightLabel="your Medium"
@@ -43,10 +43,51 @@ export function MasterMediumSlide({
   );
 }
 
-function AnimatedWorld() {
-  const maskPrefix = useId().replaceAll(":", "");
-  const topMaskId = `${maskPrefix}-world-top`;
-  const bottomMaskId = `${maskPrefix}-world-bottom`;
+type AnimatedWorldProps = {
+  isAnimated: boolean;
+};
+
+const meridianDurationSeconds = 4;
+const meridianCount = 5;
+
+const topMeridianFrames = [
+  "M1 30.5C13 16 37 4 66.05 1",
+  "M34 32.5C41 17 52 6 66.05 1",
+  "M66.05 34C66.05 20 66.05 7 66.05 1",
+  "M99 32.5C92 17 80 6 66.05 1",
+  "M132 30.5C120 16 96 4 66.05 1",
+];
+
+const bottomMeridianFrames = [
+  "M1 83.5C13 98 37 110 66.05 113",
+  "M34 81.5C41 97 52 108 66.05 113",
+  "M66.05 80C66.05 94 66.05 107 66.05 113",
+  "M99 81.5C92 97 80 108 66.05 113",
+  "M132 83.5C120 98 96 110 66.05 113",
+];
+
+const staticTopMeridians = [
+  "M17 31.5C28 16 44 5 66.05 1",
+  "M42 33C48 18 56 7 66.05 1",
+  topMeridianFrames[2],
+  "M90 33C84 18 76 7 66.05 1",
+  "M116 31.5C105 16 88 5 66.05 1",
+];
+
+const staticBottomMeridians = [
+  "M17 82.5C28 98 44 109 66.05 113",
+  "M42 81C48 96 56 107 66.05 113",
+  bottomMeridianFrames[2],
+  "M90 81C84 96 76 107 66.05 113",
+  "M116 82.5C105 98 88 109 66.05 113",
+];
+
+function AnimatedWorld({ isAnimated }: AnimatedWorldProps) {
+  const prefersReducedMotion = useReducedMotion();
+  const clipPrefix = useId().replaceAll(":", "");
+  const topClipId = `${clipPrefix}-world-top`;
+  const bottomClipId = `${clipPrefix}-world-bottom`;
+  const shouldAnimate = isAnimated && !prefersReducedMotion;
 
   return (
     <svg
@@ -57,54 +98,94 @@ function AnimatedWorld() {
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        <mask
-          height="114"
-          id={topMaskId}
-          maskUnits="userSpaceOnUse"
-          width="133"
-          x="0"
-          y="0"
-        >
-          <rect fill="black" height="114" width="133" />
-          <path d={worldPathParts.topOutline} fill="white" />
-          <g className="master-medium-world__meridians master-medium-world__meridians--top">
-            <path d={worldPathParts.topMeridians} fill="black" />
-          </g>
-        </mask>
-
-        <mask
-          height="114"
-          id={bottomMaskId}
-          maskUnits="userSpaceOnUse"
-          width="133"
-          x="0"
-          y="0"
-        >
-          <rect fill="black" height="114" width="133" />
-          <path d={worldPathParts.bottomOutline} fill="white" />
-          <g className="master-medium-world__meridians master-medium-world__meridians--bottom">
-            <path d={worldPathParts.bottomMeridians} fill="black" />
-          </g>
-        </mask>
+        <clipPath id={topClipId}>
+          <path d={worldPathParts.topOutline} />
+        </clipPath>
+        <clipPath id={bottomClipId}>
+          <path d={worldPathParts.bottomOutline} />
+        </clipPath>
       </defs>
 
-      <rect
-        fill="currentColor"
-        height="114"
-        mask={`url(#${topMaskId})`}
-        width="133"
+      <g clipPath={`url(#${topClipId})`}>
+        <RevolvingMeridians
+          animationFrames={topMeridianFrames}
+          isAnimated={shouldAnimate}
+          staticPaths={staticTopMeridians}
+        />
+      </g>
+      <path
+        className="master-medium-world__hemisphere"
+        d={worldPathParts.topOutline}
       />
 
-      <path d={worldPathParts.center} fill="currentColor" />
+      <path
+        className="master-medium-world__center"
+        d={worldPathParts.center}
+      />
 
-      <rect
-        fill="currentColor"
-        height="114"
-        mask={`url(#${bottomMaskId})`}
-        width="133"
+      <g clipPath={`url(#${bottomClipId})`}>
+        <RevolvingMeridians
+          animationFrames={bottomMeridianFrames}
+          isAnimated={shouldAnimate}
+          staticPaths={staticBottomMeridians}
+        />
+      </g>
+      <path
+        className="master-medium-world__hemisphere"
+        d={worldPathParts.bottomOutline}
       />
     </svg>
   );
+}
+
+type RevolvingMeridiansProps = {
+  animationFrames: readonly string[];
+  isAnimated: boolean;
+  staticPaths: readonly string[];
+};
+
+function RevolvingMeridians({
+  animationFrames,
+  isAnimated,
+  staticPaths,
+}: RevolvingMeridiansProps) {
+  const animationValues = animationFrames.join(";");
+  return staticPaths.slice(0, meridianCount).map((pathData, index) => {
+    const begin = `${-(index * meridianDurationSeconds) / meridianCount}s`;
+
+    return (
+      <path
+        className="master-medium-world__meridian"
+        d={pathData}
+        fill="none"
+        key={`${pathData}-${index}`}
+        stroke="currentColor"
+      >
+        {isAnimated ? (
+          <>
+            <animate
+              attributeName="d"
+              begin={begin}
+              calcMode="linear"
+              dur={`${meridianDurationSeconds}s`}
+              keyTimes="0;0.25;0.5;0.75;1"
+              repeatCount="indefinite"
+              values={animationValues}
+            />
+            <animate
+              attributeName="opacity"
+              begin={begin}
+              calcMode="linear"
+              dur={`${meridianDurationSeconds}s`}
+              keyTimes="0;0.12;0.5;0.88;1"
+              repeatCount="indefinite"
+              values="0;1;1;1;0"
+            />
+          </>
+        ) : null}
+      </path>
+    );
+  });
 }
 
 function splitWorldPath(pathData: string) {
@@ -115,35 +196,21 @@ function splitWorldPath(pathData: string) {
 
   if (middleIndex < 0 || topIndex < 0 || topIndex <= middleIndex) {
     return {
-      bottomMeridians: "",
       bottomOutline: "",
       center: pathData,
-      topMeridians: "",
       topOutline: "",
     };
   }
 
-  const bottom = splitHemisphere(pathData.slice(0, middleIndex));
-  const top = splitHemisphere(pathData.slice(topIndex));
-
   return {
-    bottomMeridians: bottom.meridians,
-    bottomOutline: bottom.outline,
+    bottomOutline: getHemisphereOutline(pathData.slice(0, middleIndex)),
     center: pathData.slice(middleIndex, topIndex),
-    topMeridians: top.meridians,
-    topOutline: top.outline,
+    topOutline: getHemisphereOutline(pathData.slice(topIndex)),
   };
 }
 
-function splitHemisphere(pathData: string) {
+function getHemisphereOutline(pathData: string) {
   const outlineEnd = pathData.indexOf("Z") + 1;
 
-  if (outlineEnd <= 0) {
-    return { meridians: "", outline: pathData };
-  }
-
-  return {
-    meridians: pathData.slice(outlineEnd),
-    outline: pathData.slice(0, outlineEnd),
-  };
+  return outlineEnd > 0 ? pathData.slice(0, outlineEnd) : pathData;
 }
