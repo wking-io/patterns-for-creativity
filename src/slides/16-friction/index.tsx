@@ -8,7 +8,7 @@ import repetitionUrl from "./repitition.svg";
 import trustUrl from "./trust.svg";
 import valueUrl from "./value.svg";
 
-export type FrictionSlideVariant = "common" | "complex";
+export type FrictionSlideVariant = "all" | "common" | "complex";
 
 type FrictionSlideProps = {
   className?: string;
@@ -30,11 +30,20 @@ const complexFriction = [
   { column: "right", iconUrl: languageUrl, id: "language", label: "Language", row: "bottom" },
 ] as const;
 
+const allFriction = [
+  ...commonFriction,
+  ...complexFriction,
+] as const;
+
 export function FrictionSlide({
   className = "",
-  variant = "common",
+  variant = "all",
 }: FrictionSlideProps) {
-  const items = variant === "complex" ? complexFriction : commonFriction;
+  const items = variant === "all"
+    ? allFriction
+    : variant === "complex"
+      ? complexFriction
+      : commonFriction;
 
   return (
     <div

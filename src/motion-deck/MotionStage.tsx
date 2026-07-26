@@ -26,7 +26,6 @@ import {
   ExposurePracticeCollectionSlide,
   ExposurePracticeDemoSlide,
   ExposurePracticeMaskSlide,
-  ExposurePracticeMyMindSlide,
 } from "../slides/19-exposure-practice";
 import { CatalystCollisionSlide } from "../slides/20-catalyst-collision";
 import { IdeasMediaSlide, IdeasSlide } from "../slides/20-ideas";
@@ -54,7 +53,7 @@ import {
 import { TastePatternSlide } from "../slides/25-taste";
 import {
   FirstIdeaSlide,
-  ScratchRevealSlide,
+  TileRevealSlide,
 } from "../slides/26-optimize-for-exploration";
 import { FinalPathSlide } from "../slides/28-final-path";
 import {
@@ -82,16 +81,16 @@ import howYouUrl from "../slides/01-think/how-you.svg";
 import mustChangeUrl from "../slides/01-think/must-change.svg";
 import thinkGraffitiUrl from "../slides/01-think/think-graffiti.svg";
 import thinkUrl from "../slides/01-think/think.svg";
-import cloudOverlayUrl from "../slides/06-creative-path/fog.webp";
 import { SlideGridOverlay, SlideTextureOverlay, TitleSlideFooter } from "../slides/SlideFrame";
 import type { MotionDeckFrame } from "./frames";
+import { createDefaultTileRevealState } from "./presentation-sync";
 import type {
   ExposureMaskStep,
   PortalMaskRect,
   PresentationCollectionScrollState,
   PresentationInteractionState,
   PresentationPointerPosition,
-  ScratchSegment,
+  TileRevealState,
 } from "./presentation-sync";
 import { areMotionStagePropsEqual, getMotionStageBehavior } from "./stage-mode";
 import type { MotionStageMode } from "./stage-mode";
@@ -105,12 +104,13 @@ type MotionStageProps = {
   onAdvance?: () => void;
   onInteractionState?: (state: PresentationInteractionState) => void;
   onPortalMaskRect?: (rect: PortalMaskRect) => void;
-  onScratchSegments?: (segments: ScratchSegment[]) => void;
-  scratchSegments?: readonly ScratchSegment[];
+  onTileRevealState?: (frameId: string, state: TileRevealState) => void;
+  tileRevealState?: TileRevealState;
   portalMaskRect?: PortalMaskRect;
 };
 
 const shouldAutoAdvanceDesignVideo = true;
+const defaultTileRevealState = createDefaultTileRevealState();
 
 function MotionStageComponent({
   direction,
@@ -121,8 +121,8 @@ function MotionStageComponent({
   onAdvance,
   onInteractionState,
   onPortalMaskRect,
-  onScratchSegments,
-  scratchSegments = [],
+  onTileRevealState,
+  tileRevealState,
   portalMaskRect,
 }: MotionStageProps) {
   const behavior = getMotionStageBehavior(mode);
@@ -131,6 +131,11 @@ function MotionStageComponent({
   const currentInteractionState = interactionState?.frameId === frame.id
     ? interactionState
     : undefined;
+  const resolvedTileRevealState = tileRevealState ?? {
+    rows: frame.tileRevealRows ?? defaultTileRevealState.rows,
+    columns: frame.tileRevealColumns ?? defaultTileRevealState.columns,
+    removedTileIds: [],
+  };
   const reportPointer = (pointer?: PresentationPointerPosition) => {
     onInteractionState?.({ frameId: frame.id, pointer });
   };
@@ -171,7 +176,6 @@ function MotionStageComponent({
   const isVisualCreativityCollageFrame = contentFrameId === "visual-creativity-collage";
   const isCreativePathFrame = contentFrameId === "creative-path" || contentFrameId === "creative-path-fog";
   const isCreativePathFogFrame = contentFrameId === "creative-path-fog";
-  const isCloudOverlayFrame = frame.id === "manufacturing-cloud-static";
   const isMagicFrame = contentFrameId === "magic";
   const isBloomFrame = contentFrameId === "bloom";
   const isRhythmFrame = contentFrameId === "rhythm";
@@ -185,7 +189,6 @@ function MotionStageComponent({
   const isAskWhyFrame = contentFrameId === "friction-practice-ask-why";
   const isApertureFrame = contentFrameId === "friction-practice-aperture";
   const isExposurePracticeMaskFrame = contentFrameId === "exposure-practice-sky-remembers";
-  const isExposurePracticeMyMindFrame = contentFrameId === "exposure-practice-mymind";
   const isExposurePracticeCollectionFrame = contentFrameId === "exposure-practice-image-placeholder";
   const isCatalystCollisionFrame = contentFrameId === "catalyst-collision";
   const isIdeasFrame = contentFrameId === "ideas";
@@ -202,7 +205,7 @@ function MotionStageComponent({
   const isBuildingSoftwareLearningFrame = contentFrameId === "output-not-artifacts-building-is-learning";
   const isTastePatternFrame =
     contentFrameId === "taste-pattern-matching" || frame.tastePatternCopy != null;
-  const isScratchRevealFrame = contentFrameId === "optimize-exploration-scratch";
+  const isTileRevealFrame = contentFrameId === "optimize-exploration-scratch";
   const isFirstIdeaFrame = contentFrameId === "optimize-first-idea";
   const isTasteBillieVideoFrame = contentFrameId === "taste-practice-image-placeholder";
   const isFinalPathFrame = contentFrameId === "final-path";
@@ -227,7 +230,7 @@ function MotionStageComponent({
     isMasterMediumSideshowFrame ||
     isMasterMediumTeachFrame ||
     isTastePatternFrame ||
-    isScratchRevealFrame
+    isTileRevealFrame
   ) && shouldAnimateContent;
 
   return (
@@ -296,17 +299,7 @@ function MotionStageComponent({
           <ManufacturingSlide
             className="slide-content"
             isAnimated={shouldAnimateContent}
-          >
-            {isCloudOverlayFrame ? (
-              <img
-                alt=""
-                aria-hidden="true"
-                className="creative-path-slide__fog"
-                draggable={false}
-                src={cloudOverlayUrl}
-              />
-            ) : null}
-          </ManufacturingSlide>
+          />
         ) : isCreativityFrame ? (
           <CreativitySlide
             className="slide-content"
@@ -332,6 +325,7 @@ function MotionStageComponent({
           <VisualCreativityCollageSlide className="slide-content" />
         ) : isCreativePathFrame ? (
           <CreativePathSlide
+            animationSpeed={frame.id === "creative-path" ? 2 : 1}
             className="slide-content"
             isAnimated={shouldAnimateContent}
             isFogVisible={isCreativePathFogFrame}
@@ -369,15 +363,15 @@ function MotionStageComponent({
             leftLabel={frame.tastePatternCopy?.leftLabel}
             rightLabel={frame.tastePatternCopy?.rightLabel}
           />
-        ) : isScratchRevealFrame ? (
-          <ScratchRevealSlide
+        ) : isTileRevealFrame ? (
+          <TileRevealSlide
             className="slide-content"
-            isInteractive={isInteractiveMode && shouldAnimateContent}
+            frameId={frame.id}
+            isInteractive={isInteractiveMode}
             key={frame.id}
-            onScratchSegments={onScratchSegments}
-            onPointerChange={reportPointer}
-            scratchSegments={scratchSegments}
-            showCompletedWhenStatic={mode === "preview"}
+            onStateChange={(state) => onTileRevealState?.(frame.id, state)}
+            showControls={false}
+            state={resolvedTileRevealState}
           />
         ) : isFirstIdeaFrame ? (
           <FirstIdeaSlide
@@ -392,6 +386,7 @@ function MotionStageComponent({
           <CatalystSlide
             className="slide-content"
             isAnimated={shouldAnimateContent}
+            variant={frame.catalystVariant}
           />
         ) : isCatalystOutcomesFrame ? (
           <CatalystOutcomesSlide
@@ -463,11 +458,6 @@ function MotionStageComponent({
             isInteractive={isInteractiveMode}
             maskStep={currentInteractionState?.exposureMaskStep}
             onInteractionChange={reportExposureMaskInteraction}
-          />
-        ) : isExposurePracticeMyMindFrame ? (
-          <ExposurePracticeMyMindSlide
-            className="slide-content"
-            isAnimated={shouldAnimateContent}
           />
         ) : isExposurePracticeCollectionFrame ? (
           <ExposurePracticeCollectionSlide
@@ -602,9 +592,6 @@ function MotionStageComponent({
         <div className="presentation-pointer-layer">
           <PresentationPointer
             position={currentInteractionState.pointer}
-            variant={isScratchRevealFrame && scratchSegments.length > 0
-              ? "scratch"
-              : "pointer"}
           />
         </div>
       ) : null}
@@ -634,42 +621,9 @@ function MagicCompositeSlide({ shouldPlay }: { shouldPlay: boolean }) {
 
 function PresentationPointer({
   position,
-  variant,
 }: {
   position: PresentationPointerPosition;
-  variant: "pointer" | "scratch";
 }) {
-  if (variant === "scratch") {
-    return (
-      <svg
-        aria-hidden="true"
-        className="presentation-pointer presentation-pointer--scratch"
-        style={{ left: `${position.x * 100}%`, top: `${position.y * 100}%` }}
-        viewBox="0 0 18 18"
-      >
-        <path
-          d="M7 1.25h4c2.2803 0 4 3.3315 4 7.75s-1.7197 7.75-4 7.75H7Z"
-          fill="var(--color-light-s0)"
-        />
-        <ellipse
-          cx="7"
-          cy="9"
-          fill="var(--color-light-s0)"
-          rx="4"
-          ry="7.75"
-        />
-        <path
-          d="m11,1.25h-4c-.4141,0-.75.3359-.75.75s.3359.75.75.75h4c.5839,0,1.2014.6558,1.6769,1.75h-2.9323c-.4141,0-.75.3359-.75.75s.3359.75.75.75h3.4207c.1602.676.2704,1.4343.3134,2.25h-3.2286c-.4141,0-.75.3359-.75.75s.3359.75.75.75h3.2286c-.0429.8157-.1531,1.574-.3134,2.25h-3.4207c-.4141,0-.75.3359-.75.75s.3359.75.75.75h2.9323c-.4755,1.0942-1.093,1.75-1.6769,1.75h-4c-.4141,0-.75.3359-.75.75s.3359.75.75.75h4c2.2803,0,4-3.3315,4-7.75s-1.7197-7.75-4-7.75Z"
-          fill="currentColor"
-        />
-        <path
-          d="m7,1.25c-2.2803,0-4,3.3315-4,7.75s1.7197,7.75,4,7.75,4-3.3315,4-7.75S9.2803,1.25,7,1.25Zm.75,9.5c0,.4141-.3359.75-.75.75s-.75-.3359-.75-.75v-3.5c0-.4141.3359-.75.75-.75s.75.3359.75.75v3.5Z"
-          fill="currentColor"
-        />
-      </svg>
-    );
-  }
-
   return (
     <svg
       aria-hidden="true"

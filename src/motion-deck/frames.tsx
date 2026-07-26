@@ -7,7 +7,10 @@ import type { FeedbackPracticeSlideVariant } from "../slides/15-feedback-practic
 import type { FrictionSlideVariant } from "../slides/16-friction";
 import type { ApertureSlideVariant } from "../slides/17-friction-practice";
 import type { ExposurePracticeDemoVariant } from "../slides/19-exposure-practice";
-import type { CatalystOutcomesStep } from "../slides/13-catalyst";
+import type {
+  CatalystOutcomesStep,
+  CatalystSlideVariant,
+} from "../slides/13-catalyst";
 import type { IdeasMediaVariant } from "../slides/20-ideas";
 import type { CatalystParticleCounts } from "../slides/20-catalyst-collision";
 import type { LanguageTweetVariant } from "../slides/22-language-is-power";
@@ -28,6 +31,7 @@ export type MotionDeckFrame = {
   apertureVariant?: ApertureSlideVariant;
   catalystOutcomesStep?: CatalystOutcomesStep;
   catalystParticleCounts?: CatalystParticleCounts;
+  catalystVariant?: CatalystSlideVariant;
   creativePathVariant?: CreativePathVariant;
   creativeProcessStage?: CreativeProcessStage;
   feedbackPracticeVariant?: FeedbackPracticeSlideVariant;
@@ -41,6 +45,8 @@ export type MotionDeckFrame = {
   buildingSoftwareQuoteVariant?: BuildingSoftwareQuoteVariant;
   showLessSacredPaperVideo?: boolean;
   showFirstIdeaStamp?: boolean;
+  tileRevealColumns?: number;
+  tileRevealRows?: number;
   tastePatternCopy?: {
     headline: string;
     iconVariant?: "pattern" | "polyhedron";
@@ -78,26 +84,6 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     kind: "contained-light",
     label: "Output",
     outputVariant: "engineer-code",
-    transition: {
-      duration: 0.54,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-  {
-    id: "output-design",
-    kind: "contained-light",
-    label: "Design",
-    outputVariant: "designer-pixels",
-    transition: {
-      duration: 0.54,
-      ease: [0.16, 1, 0.3, 1],
-    },
-  },
-  {
-    id: "output-product",
-    kind: "contained-light",
-    label: "Product",
-    outputVariant: "product-docs",
     transition: {
       duration: 0.54,
       ease: [0.16, 1, 0.3, 1],
@@ -144,7 +130,7 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     kind: "contained-light",
     label: "Creative Path",
     transition: {
-      duration: 0.54,
+      duration: 0.27,
       ease: [0.16, 1, 0.3, 1],
     },
   },
@@ -156,22 +142,6 @@ export const motionDeckFrames: MotionDeckFrame[] = [
       duration: 0.54,
       ease: [0.16, 1, 0.3, 1],
     },
-  },
-  {
-    id: "manufacturing-static",
-    sourceId: "manufacturing",
-    kind: "contained-light",
-    label: "Manufacturing (Static)",
-    isStatic: true,
-    transition: { duration: 0 },
-  },
-  {
-    id: "manufacturing-cloud-static",
-    sourceId: "manufacturing",
-    kind: "contained-light",
-    label: "Manufacturing + Cloud (Static)",
-    isStatic: true,
-    transition: { duration: 0 },
   },
   {
     id: "magic",
@@ -252,33 +222,11 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     },
   },
   {
-    id: "feedback",
-    kind: "contained-dark",
-    label: "Feedback",
-    feedbackVariant: "initial",
-    transition: { duration: 0 },
-  },
-  {
     id: "feedback-people",
     sourceId: "feedback",
     kind: "contained-dark",
-    label: "Feedback — People",
+    label: "From the Work — Feedback",
     feedbackVariant: "people",
-    transition: { duration: 0 },
-  },
-  {
-    id: "feedback-complete",
-    sourceId: "feedback",
-    kind: "contained-dark",
-    label: "Feedback — People and Systems",
-    feedbackVariant: "complete",
-    transition: { duration: 0 },
-  },
-  {
-    id: "feedback-practice",
-    kind: "contained-dark",
-    label: "Feedback Practice",
-    feedbackPracticeVariant: "intro",
     transition: { duration: 0 },
   },
   {
@@ -303,42 +251,6 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     kind: "contained-dark",
     label: "Feedback Practice — X Post",
     feedbackPracticeVariant: "tweet",
-    transition: { duration: 0 },
-  },
-  {
-    id: "catalyst-outcomes-feedback",
-    sourceId: "catalyst-outcomes",
-    kind: "constrained-dark",
-    label: "Catalysts — Feedback to Evidence",
-    catalystOutcomesStep: 1,
-    transition: { duration: 0 },
-  },
-  {
-    id: "friction",
-    kind: "contained-dark",
-    label: "Common Friction",
-    frictionVariant: "common",
-    transition: { duration: 0 },
-  },
-  {
-    id: "friction-complex",
-    sourceId: "friction",
-    kind: "contained-dark",
-    label: "Complex Friction",
-    frictionVariant: "complex",
-    transition: { duration: 0 },
-  },
-  {
-    id: "friction-practice-prompt",
-    kind: "constrained-dark",
-    label: "Friction Practice — Pause, Ask Why",
-    feedbackPracticeVariant: "friction-ask-why",
-    transition: { duration: 0 },
-  },
-  {
-    id: "friction-practice-ask-why",
-    kind: "constrained-dark",
-    label: "Friction Practice — Ask Why",
     transition: { duration: 0 },
   },
   {
@@ -380,60 +292,21 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     transition: { duration: 0 },
   },
   {
-    id: "friction-practice-unspoken",
-    kind: "constrained-dark",
-    label: "Friction Practice — What People Do Not Say",
-    feedbackPracticeVariant: "friction-unspoken",
-    transition: { duration: 0 },
-  },
-  {
-    id: "catalyst-outcomes-friction",
-    sourceId: "catalyst-outcomes",
-    kind: "constrained-dark",
-    label: "Catalysts — Friction to Direction",
-    catalystOutcomesStep: 2,
-    transition: { duration: 0 },
-  },
-  {
-    id: "catalyst-outcomes-exposure",
-    sourceId: "catalyst-outcomes",
-    kind: "constrained-dark",
-    label: "Catalysts — Exposure to Possibility",
-    catalystOutcomesStep: 3,
-    transition: { duration: 0 },
-  },
-  {
-    id: "exposure-practice-sky-remembers",
-    kind: "full-dark",
-    label: "Exposure Practice — The Sky Remembers",
-    transition: { duration: 0 },
-  },
-  {
-    id: "exposure-practice-map-overflow",
-    kind: "contained-light",
-    label: "Exposure Practice — Map Overflow",
-    exposurePracticeDemoVariant: "map-overflow",
-    transition: { duration: 0 },
+    id: "catalyst-reprise",
+    sourceId: "catalyst",
+    kind: "contained-dark",
+    label: "Catalyst — Reprise",
+    catalystVariant: "world-reveal",
+    transition: {
+      duration: 0.54,
+      ease: [0.16, 1, 0.3, 1],
+    },
   },
   {
     id: "exposure-practice-soundfall",
     kind: "constrained-dark",
     label: "Exposure Practice — Soundfall",
     exposurePracticeDemoVariant: "soundfall",
-    transition: { duration: 0 },
-  },
-  {
-    id: "exposure-practice-portal",
-    kind: "constrained-dark",
-    label: "Exposure Practice — Portal",
-    exposurePracticeDemoVariant: "portal",
-    transition: { duration: 0 },
-  },
-  {
-    id: "exposure-practice-sky-remembers-reprise",
-    sourceId: "exposure-practice-sky-remembers",
-    kind: "full-dark",
-    label: "Exposure Practice — The Sky Remembers (Reprise)",
     transition: { duration: 0 },
   },
   {
@@ -448,12 +321,6 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     kind: "constrained-dark",
     label: "Exposure Practice — Collect What You Notice",
     feedbackPracticeVariant: "exposure-notice",
-    transition: { duration: 0 },
-  },
-  {
-    id: "exposure-practice-mymind",
-    kind: "constrained-dark",
-    label: "Exposure Practice — MyMind",
     transition: { duration: 0 },
   },
   {
@@ -711,7 +578,18 @@ export const motionDeckFrames: MotionDeckFrame[] = [
   {
     id: "optimize-exploration-scratch",
     kind: "constrained-gradient",
-    label: "Optimize for Exploration — Scratch Reveal",
+    label: "Optimize for Exploration — Tile Reveal",
+    tileRevealColumns: 20,
+    tileRevealRows: 9,
+    transition: { duration: 0 },
+  },
+  {
+    id: "optimize-exploration-tiles-2",
+    sourceId: "optimize-exploration-scratch",
+    kind: "constrained-gradient",
+    label: "Optimize for Exploration — Tile Reveal 2",
+    tileRevealColumns: 10,
+    tileRevealRows: 4,
     transition: { duration: 0 },
   },
   {
@@ -778,15 +656,10 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     },
   },
   {
-    id: "less-sacred-constraints",
+    id: "taste-practice-perspectives-possibilities",
     kind: "constrained-gradient",
-    label: "Less Sacred — Constraints",
-    transition: { duration: 0 },
-  },
-  {
-    id: "less-sacred-quick-video",
-    kind: "constrained-dark",
-    label: "Less Sacred — Quick",
+    label: "Taste Practice — More Perspectives, More Possibilities",
+    feedbackPracticeVariant: "perspectives-possibilities",
     transition: { duration: 0 },
   },
   {
@@ -862,12 +735,6 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     transition: { duration: 0 },
   },
   {
-    id: "visual-creativity-collage",
-    kind: "full-dark",
-    label: "Visual Creativity — Collage",
-    transition: { duration: 0 },
-  },
-  {
     id: "shorten-loop-prototype",
     kind: "full-dark",
     label: "Shorten the Loop — Prototype",
@@ -884,13 +751,6 @@ export const motionDeckFrames: MotionDeckFrame[] = [
     id: "shorten-loop-bezier",
     kind: "full-dark",
     label: "Shorten the Loop — Bezier Tool",
-    transition: { duration: 0 },
-  },
-  {
-    id: "shorten-loop-ridd",
-    kind: "constrained-dark",
-    label: "Shorten the Loop — Ridd",
-    shortenLoopPairedMediaVariant: "ridd",
     transition: { duration: 0 },
   },
   {

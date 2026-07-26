@@ -18,8 +18,8 @@ import type {
   AudienceConnectionStatus,
   PortalMaskRect,
   PresentationInteractionState,
+  TileRevealState,
 } from "./presentation-sync";
-import type { ScratchSegment } from "./presentation-sync";
 import {
   createElapsedTimerState,
   elapsedTimerReducer,
@@ -40,11 +40,11 @@ type PresenterViewProps = {
   onOpenAudience: () => void;
   onInteractionState: (state: PresentationInteractionState) => void;
   onPortalMaskRect: (rect: PortalMaskRect) => void;
-  onScratchSegments: (segments: ScratchSegment[]) => void;
+  onTileRevealState: (frameId: string, state: TileRevealState) => void;
   onToggleAudienceBlackout: () => void;
   portalMaskRect?: PortalMaskRect;
   interactionState?: PresentationInteractionState;
-  scratchSegments: readonly ScratchSegment[];
+  tileRevealStates: Readonly<Record<string, TileRevealState>>;
 };
 
 export function PresenterView({
@@ -57,11 +57,11 @@ export function PresenterView({
   onOpenAudience,
   onInteractionState,
   onPortalMaskRect,
-  onScratchSegments,
+  onTileRevealState,
   onToggleAudienceBlackout,
   portalMaskRect,
   interactionState,
-  scratchSegments,
+  tileRevealStates,
 }: PresenterViewProps) {
   const [notesSession, dispatchNotes] = useReducer(
     notesSessionReducer,
@@ -448,8 +448,8 @@ export function PresenterView({
                 onAdvance={onNext}
                 onPortalMaskRect={onPortalMaskRect}
                 onInteractionState={onInteractionState}
-                onScratchSegments={onScratchSegments}
-                scratchSegments={scratchSegments}
+                onTileRevealState={onTileRevealState}
+                tileRevealState={tileRevealStates[frame.id]}
                 portalMaskRect={portalMaskRect}
               />
             </div>
@@ -458,11 +458,18 @@ export function PresenterView({
           <div className="presenter-preview-footer">
             <div className="presenter-preview-card presenter-preview-card--next">
               {nextFrame ? (
-                <button
+                <div
                   aria-label={`Advance to ${nextFrame.label}`}
                   className="presenter-stage-shell presenter-stage-shell--next"
                   onClick={onNext}
-                  type="button"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onNext();
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
                 >
                   <MotionStage
                     direction={1}
@@ -471,9 +478,9 @@ export function PresenterView({
                     interactionState={interactionState}
                     mode="preview"
                     portalMaskRect={portalMaskRect}
-                    scratchSegments={scratchSegments}
+                    tileRevealState={tileRevealStates[nextFrame.id]}
                   />
-                </button>
+                </div>
               ) : (
                 <div className="presenter-end-state">You’re at the final frame.</div>
               )}

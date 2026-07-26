@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { motion } from "motion/react";
-import { FeedbackPracticeSlide } from "../15-feedback-practice";
 import type {
   ExposureMaskStep,
   PortalMaskRect,
@@ -247,6 +246,8 @@ function isPortalMaskRect(value: unknown): value is PortalMaskRect {
 type ExposurePracticeMyMindSlideProps = {
   className?: string;
   isAnimated?: boolean;
+  loadImagesEagerly?: boolean;
+  scrollState?: PresentationCollectionScrollState;
 };
 
 type ExposurePracticeCollectionSlideProps = {
@@ -551,13 +552,16 @@ function isPointInsideExposureThreshold(
 export function ExposurePracticeMyMindSlide({
   className = "",
   isAnimated = true,
+  loadImagesEagerly = false,
+  scrollState,
 }: ExposurePracticeMyMindSlideProps) {
   return (
     <div className={`exposure-practice-mymind ${className}`.trim()}>
-      <FeedbackPracticeSlide
+      <ExposurePracticeCollectionSlide
         className="exposure-practice-mymind__base"
-        isAnimated={false}
-        variant="exposure-notice"
+        isAnimated={isAnimated}
+        loadImagesEagerly={loadImagesEagerly}
+        scrollState={scrollState}
       />
 
       <motion.div

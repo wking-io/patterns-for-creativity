@@ -31,8 +31,8 @@ export function DeviceBody({
 				)}
 			>
 				{children}
-				<div className="absolute inset-x-0 top-full z-[-4] h-6 translate-y-[460%] rounded-[50%] bg-amber-950/40 blur-lg" />
-				<div className="absolute -inset-x-16 top-full z-[-4] h-16 translate-y-[160%] rounded-[50%] bg-amber-950/40 blur-2xl" />
+				<div className="absolute inset-x-0 top-full z-[-4] h-6 translate-y-[300%] rounded-[50%] bg-amber-950/40 blur-lg" />
+				<div className="absolute -inset-x-16 top-full z-[-4] h-16 translate-y-[100%] rounded-[50%] bg-amber-950/40 blur-2xl" />
 			</div>
 		</>
 	)

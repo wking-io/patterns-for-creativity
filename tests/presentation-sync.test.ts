@@ -3,20 +3,20 @@ import {
   acceptPresentationInteractionState,
   acceptPresentationPortalMaskState,
   acceptPresentationState,
-  acceptPresentationScratchState,
+  acceptPresentationTileRevealState,
   createAudienceBlackoutUrl,
   createAudienceConnectionState,
   createAudienceDisplayUrl,
   createAudiencePresenceMessage,
+  createDefaultTileRevealState,
   createPresentationInteractionCursor,
   createPresentationInteractionMessage,
   createPresentationPortalMaskCursor,
   createPresentationPortalMaskMessage,
   createPresentationStateCursor,
   createPresentationStateMessage,
-  createPresentationScratchCursor,
-  createPresentationScratchMessage,
-  createPresentationScratchSnapshot,
+  createPresentationTileRevealCursor,
+  createPresentationTileRevealMessage,
   deliverPresentationMessage,
   getDeckViewMode,
   getInitialAudienceBlackout,
@@ -85,65 +85,277 @@ assert.equal(
 assert.equal(parsePresentationMessage({ ...initialState, version: 2 }, 29), undefined);
 assert.equal(parsePresentationMessage("not a message", 29), undefined);
 
-const scratchSegments = [
-  { fromX: 0.1, fromY: 0.2, toX: 0.3, toY: 0.4 },
-  { fromX: 0.3, fromY: 0.4, toX: 0.5, toY: 0.6 },
-];
-const scratchState = createPresentationScratchMessage(
+const defaultTileRevealState = createDefaultTileRevealState();
+assert.deepEqual(defaultTileRevealState, {
+  rows: 6,
+  columns: 10,
+  removedTileIds: [],
+});
+const tileRevealState = {
+  rows: 6,
+  columns: 10,
+  removedTileIds: [2, 7, 38],
+};
+const tileRevealMessage = createPresentationTileRevealMessage(
   "presenter-a",
   0,
-  "replace",
-  scratchSegments,
+  "optimize-exploration-scratch",
+  tileRevealState,
 );
-assert.deepEqual(scratchState, {
-  type: "presentation-scratch",
+assert.deepEqual(tileRevealMessage, {
+  type: "presentation-tile-reveal",
   version: 1,
   sessionId: "presenter-a",
   revision: 0,
-  mode: "replace",
-  segments: scratchSegments,
+  frameId: "optimize-exploration-scratch",
+  state: tileRevealState,
 });
-assert.deepEqual(parsePresentationMessage(scratchState, 29), scratchState);
+assert.notEqual(
+  tileRevealMessage.state.removedTileIds,
+  tileRevealState.removedTileIds,
+  "tile reveal messages copy their mutable tile-id list",
+);
+assert.deepEqual(
+  parsePresentationMessage(tileRevealMessage, 29),
+  tileRevealMessage,
+);
+const tilePlaybackState = {
+  rows: 6,
+  columns: 10,
+  removedTileIds: [],
+  playback: {
+    id: "tile-run-1",
+    startedAt: 1_725_000_000_250,
+    recording: {
+      version: 1 as const,
+      rows: 6,
+      columns: 10,
+      events: [
+        { tileId: 7, atMs: 125 },
+        { tileId: 38, atMs: 480 },
+      ],
+    },
+  },
+};
+const tilePlaybackMessage = createPresentationTileRevealMessage(
+  "presenter-a",
+  1,
+  "optimize-exploration-scratch",
+  tilePlaybackState,
+);
+assert.deepEqual(
+  parsePresentationMessage(tilePlaybackMessage, 29),
+  tilePlaybackMessage,
+  "a synchronized tile snapshot can carry a timed playback run",
+);
+assert.notEqual(
+  tilePlaybackMessage.state.playback?.recording.events,
+  tilePlaybackState.playback.recording.events,
+  "playback events are copied before crossing the presentation channel",
+);
 assert.equal(
   parsePresentationMessage({
-    ...scratchState,
-    segments: [{ fromX: -0.1, fromY: 0.2, toX: 0.3, toY: 0.4 }],
+    ...tilePlaybackMessage,
+    state: {
+      ...tilePlaybackState,
+      playback: { ...tilePlaybackState.playback, id: "" },
+    },
   }, 29),
   undefined,
-  "scratch coordinates must stay normalized",
+  "playback runs require an identity",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tilePlaybackMessage,
+    state: {
+      ...tilePlaybackState,
+      playback: {
+        ...tilePlaybackState.playback,
+        recording: {
+          ...tilePlaybackState.playback.recording,
+          rows: 9,
+        },
+      },
+    },
+  }, 29),
+  undefined,
+  "playback dimensions must match the visible grid",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tileRevealMessage,
+    frameId: "",
+  }, 29),
+  undefined,
+  "tile reveal messages identify a non-empty frame",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tileRevealMessage,
+    state: { ...tileRevealState, rows: 1 },
+  }, 29),
+  undefined,
+  "tile reveal rows must stay within the control range",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tileRevealMessage,
+    state: { ...tileRevealState, rows: 17 },
+  }, 29),
+  undefined,
+  "tile reveal rows cannot exceed the control range",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tileRevealMessage,
+    state: { ...tileRevealState, rows: 6.5 },
+  }, 29),
+  undefined,
+  "tile reveal rows must be integers",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tileRevealMessage,
+    state: { ...tileRevealState, columns: 1 },
+  }, 29),
+  undefined,
+  "tile reveal columns must stay within the control range",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tileRevealMessage,
+    state: { ...tileRevealState, columns: 25 },
+  }, 29),
+  undefined,
+  "tile reveal columns cannot exceed the control range",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tileRevealMessage,
+    state: { ...tileRevealState, removedTileIds: [2, 2] },
+  }, 29),
+  undefined,
+  "tile ids must be unique",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tileRevealMessage,
+    state: { ...tileRevealState, removedTileIds: [-1] },
+  }, 29),
+  undefined,
+  "tile ids must be non-negative integers",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tileRevealMessage,
+    state: { ...tileRevealState, removedTileIds: [2.5] },
+  }, 29),
+  undefined,
+  "tile ids cannot be fractional",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...tileRevealMessage,
+    state: { ...tileRevealState, removedTileIds: [60] },
+  }, 29),
+  undefined,
+  "tile ids must stay within the current grid",
 );
 
-let scratchCursor = createPresentationScratchCursor();
-let scratchResult = acceptPresentationScratchState(scratchCursor, scratchState);
-assert.equal(scratchResult.accepted, true);
-scratchCursor = scratchResult.cursor;
-scratchResult = acceptPresentationScratchState(scratchCursor, scratchState);
-assert.equal(scratchResult.accepted, false, "duplicate scratch delivery is ignored");
-scratchResult = acceptPresentationScratchState(
-  scratchCursor,
-  createPresentationScratchMessage("presenter-a", 1, "append", [scratchSegments[1]]),
+let tileRevealCursor = createPresentationTileRevealCursor();
+let tileRevealResult = acceptPresentationTileRevealState(
+  tileRevealCursor,
+  tileRevealMessage,
 );
-assert.equal(scratchResult.accepted, true, "new scratch segments are accepted in order");
-scratchCursor = scratchResult.cursor;
+assert.equal(tileRevealResult.accepted, true);
+tileRevealCursor = tileRevealResult.cursor;
+tileRevealResult = acceptPresentationTileRevealState(
+  tileRevealCursor,
+  tileRevealMessage,
+);
+assert.equal(
+  tileRevealResult.accepted,
+  false,
+  "duplicate tile reveal delivery is ignored",
+);
+tileRevealResult = acceptPresentationTileRevealState(
+  tileRevealCursor,
+  createPresentationTileRevealMessage(
+    "presenter-a",
+    1,
+    "optimize-exploration-scratch",
+    {
+      ...tileRevealState,
+      removedTileIds: [...tileRevealState.removedTileIds, 42],
+    },
+  ),
+);
+assert.equal(
+  tileRevealResult.accepted,
+  true,
+  "new tile reveal snapshots are accepted in order",
+);
+tileRevealCursor = tileRevealResult.cursor;
 
-const presenterReloadReset = createPresentationScratchSnapshot(
+const presenterReloadReset = createPresentationTileRevealMessage(
   "presenter-reloaded",
   0,
-  [],
+  "optimize-exploration-scratch",
+  createDefaultTileRevealState(),
 );
 assert.deepEqual(presenterReloadReset, {
-  type: "presentation-scratch",
+  type: "presentation-tile-reveal",
   version: 1,
   sessionId: "presenter-reloaded",
   revision: 0,
-  mode: "replace",
-  segments: [],
+  frameId: "optimize-exploration-scratch",
+  state: {
+    rows: 6,
+    columns: 10,
+    removedTileIds: [],
+  },
 });
-scratchResult = acceptPresentationScratchState(scratchCursor, presenterReloadReset);
+tileRevealResult = acceptPresentationTileRevealState(
+  tileRevealCursor,
+  presenterReloadReset,
+);
 assert.equal(
-  scratchResult.accepted,
+  tileRevealResult.accepted,
   true,
-  "a reloaded presenter starts a new scratch session that can clear the audience",
+  "a reloaded presenter starts a new tile session that can reset the audience",
+);
+tileRevealCursor = tileRevealResult.cursor;
+
+const secondTileRevealMessage = createPresentationTileRevealMessage(
+  "presenter-reloaded",
+  1,
+  "optimize-exploration-tiles-2",
+  {
+    rows: 8,
+    columns: 16,
+    removedTileIds: [18],
+  },
+);
+assert.deepEqual(parsePresentationMessage(secondTileRevealMessage, 29), {
+  type: "presentation-tile-reveal",
+  version: 1,
+  sessionId: "presenter-reloaded",
+  revision: 1,
+  frameId: "optimize-exploration-tiles-2",
+  state: {
+    rows: 8,
+    columns: 16,
+    removedTileIds: [18],
+  },
+});
+tileRevealResult = acceptPresentationTileRevealState(
+  tileRevealCursor,
+  secondTileRevealMessage,
+);
+assert.equal(
+  tileRevealResult.accepted,
+  true,
+  "the same presenter session can publish independent tile frames in order",
 );
 
 const portalMaskRect = { x: 0.25, y: 0.2, width: 0.4, height: 0.3 };
@@ -420,7 +632,7 @@ assert.equal(getMotionStageBehavior("preview").autoAdvance, false);
 
 const stableStageProps = {
   direction: 1,
-  frame: { id: "scratch" },
+  frame: { id: "tile-reveal" },
   isGridVisible: false,
   interactionState,
   mode: "live" as const,
@@ -428,8 +640,8 @@ const stableStageProps = {
   onInteractionState: () => undefined,
   onPortalMaskRect: () => undefined,
   portalMaskRect,
-  scratchSegments,
-  onScratchSegments: () => undefined,
+  tileRevealState,
+  onTileRevealState: () => undefined,
 };
 assert.equal(
   areMotionStagePropsEqual(stableStageProps, { ...stableStageProps }),
@@ -439,10 +651,13 @@ assert.equal(
 assert.equal(
   areMotionStagePropsEqual(stableStageProps, {
     ...stableStageProps,
-    scratchSegments: [...scratchSegments],
+    tileRevealState: {
+      ...tileRevealState,
+      removedTileIds: [...tileRevealState.removedTileIds, 42],
+    },
   }),
   false,
-  "new scratch state still redraws the slide",
+  "new tile reveal state still redraws the slide",
 );
 assert.equal(
   areMotionStagePropsEqual(stableStageProps, {

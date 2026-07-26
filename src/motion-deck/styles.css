@@ -356,8 +356,14 @@
 .presenter-stage-shell--next {
   border: 0 !important;
   border-radius: 0 !important;
+  cursor: pointer;
   min-height: 0 !important;
   padding: 0 !important;
+}
+
+.presenter-stage-shell--next:focus-visible {
+  outline: 2px solid #ff5a4f;
+  outline-offset: 2px;
 }
 
 .presenter-stage-shell--next .motion-deck-stage {

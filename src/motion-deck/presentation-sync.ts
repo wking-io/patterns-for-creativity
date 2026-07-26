@@ -1,5 +1,13 @@
 import { createFrameHash } from "./navigation.js";
 import type { DeckDirection } from "./navigation.js";
+import {
+  isTileRecording,
+  tileRevealMaxColumns,
+  tileRevealMaxRows,
+  tileRevealMinColumns,
+  tileRevealMinRows,
+} from "../slides/26-optimize-for-exploration/tile-recording.js";
+import type { TileRecording } from "../slides/26-optimize-for-exploration/tile-recording.js";
 
 export const presentationChannelName = "patterns-for-creativity-presentation";
 export const presentationMessageVersion = 1;
@@ -23,20 +31,26 @@ export type PresentationStateMessage = {
   isAudienceBlackout: boolean;
 };
 
-export type ScratchSegment = {
-  fromX: number;
-  fromY: number;
-  toX: number;
-  toY: number;
+export type TileRevealState = {
+  rows: number;
+  columns: number;
+  removedTileIds: number[];
+  playback?: TileRevealPlayback;
 };
 
-export type PresentationScratchMessage = {
-  type: "presentation-scratch";
+export type TileRevealPlayback = {
+  id: string;
+  startedAt: number;
+  recording: TileRecording;
+};
+
+export type PresentationTileRevealMessage = {
+  type: "presentation-tile-reveal";
   version: typeof presentationMessageVersion;
   sessionId: string;
   revision: number;
-  mode: "append" | "replace";
-  segments: ScratchSegment[];
+  frameId: string;
+  state: TileRevealState;
 };
 
 export type PortalMaskRect = {
@@ -90,7 +104,7 @@ export type AudiencePresenceMessage = {
 
 export type PresentationMessage =
   | PresentationStateMessage
-  | PresentationScratchMessage
+  | PresentationTileRevealMessage
   | PresentationPortalMaskMessage
   | PresentationInteractionMessage
   | AudiencePresenceMessage;
@@ -101,7 +115,7 @@ export type PresentationStateCursor = {
   retiredSessionIds: readonly string[];
 };
 
-export type PresentationScratchCursor = PresentationStateCursor;
+export type PresentationTileRevealCursor = PresentationStateCursor;
 export type PresentationPortalMaskCursor = PresentationStateCursor;
 export type PresentationInteractionCursor = PresentationStateCursor;
 
@@ -175,33 +189,42 @@ export function createPresentationStateMessage(
   };
 }
 
-export function createPresentationScratchMessage(
-  sessionId: string,
-  revision: number,
-  mode: PresentationScratchMessage["mode"],
-  segments: readonly ScratchSegment[],
-): PresentationScratchMessage {
+export function createDefaultTileRevealState(): TileRevealState {
   return {
-    type: "presentation-scratch",
-    version: presentationMessageVersion,
-    sessionId,
-    revision,
-    mode,
-    segments: [...segments],
+    rows: 6,
+    columns: 10,
+    removedTileIds: [],
   };
 }
 
-export function createPresentationScratchSnapshot(
+export function createPresentationTileRevealMessage(
   sessionId: string,
   revision: number,
-  segments: readonly ScratchSegment[],
-): PresentationScratchMessage {
-  return createPresentationScratchMessage(
+  frameId: string,
+  state: TileRevealState,
+): PresentationTileRevealMessage {
+  return {
+    type: "presentation-tile-reveal",
+    version: presentationMessageVersion,
     sessionId,
     revision,
-    "replace",
-    segments,
-  );
+    frameId,
+    state: {
+      ...state,
+      removedTileIds: [...state.removedTileIds],
+      ...(state.playback
+        ? {
+            playback: {
+              ...state.playback,
+              recording: {
+                ...state.playback.recording,
+                events: state.playback.recording.events.map((event) => ({ ...event })),
+              },
+            },
+          }
+        : {}),
+    },
+  };
 }
 
 export function createPresentationPortalMaskMessage(
@@ -265,20 +288,19 @@ export function parsePresentationMessage(
   }
 
   if (
-    value.type === "presentation-scratch" &&
+    value.type === "presentation-tile-reveal" &&
     isNonEmptyString(value.sessionId) &&
     isNonNegativeInteger(value.revision) &&
-    (value.mode === "append" || value.mode === "replace") &&
-    Array.isArray(value.segments) &&
-    value.segments.every(isScratchSegment)
+    isNonEmptyString(value.frameId) &&
+    isTileRevealState(value.state)
   ) {
     return {
-      type: "presentation-scratch",
+      type: "presentation-tile-reveal",
       version: presentationMessageVersion,
       sessionId: value.sessionId,
       revision: value.revision,
-      mode: value.mode,
-      segments: value.segments,
+      frameId: value.frameId,
+      state: value.state,
     };
   }
 
@@ -342,7 +364,7 @@ export function createPresentationStateCursor(): PresentationStateCursor {
   };
 }
 
-export function createPresentationScratchCursor(): PresentationScratchCursor {
+export function createPresentationTileRevealCursor(): PresentationTileRevealCursor {
   return createPresentationStateCursor();
 }
 
@@ -395,10 +417,10 @@ function acceptRevisionedMessage(
   };
 }
 
-export function acceptPresentationScratchState(
-  cursor: PresentationScratchCursor,
-  message: PresentationScratchMessage,
-): { accepted: boolean; cursor: PresentationScratchCursor } {
+export function acceptPresentationTileRevealState(
+  cursor: PresentationTileRevealCursor,
+  message: PresentationTileRevealMessage,
+): { accepted: boolean; cursor: PresentationTileRevealCursor } {
   return acceptRevisionedMessage(cursor, message);
 }
 
@@ -497,17 +519,51 @@ function isNonNegativeInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 0;
 }
 
-function isScratchSegment(value: unknown): value is ScratchSegment {
+function isTileRevealState(value: unknown): value is TileRevealState {
   if (!isRecord(value)) {
     return false;
   }
 
-  return [value.fromX, value.fromY, value.toX, value.toY].every((coordinate) => (
-    typeof coordinate === "number" &&
-    Number.isFinite(coordinate) &&
-    coordinate >= 0 &&
-    coordinate <= 1
-  ));
+  const rows = value.rows;
+  const columns = value.columns;
+  const removedTileIds = value.removedTileIds;
+  const playback = value.playback;
+
+  if (
+    !isIntegerInRange(rows, tileRevealMinRows, tileRevealMaxRows) ||
+    !isIntegerInRange(
+      columns,
+      tileRevealMinColumns,
+      tileRevealMaxColumns,
+    ) ||
+    !Array.isArray(removedTileIds)
+  ) {
+    return false;
+  }
+
+  const tileCount = rows * columns;
+
+  if (
+    !removedTileIds.every((tileId) => (
+      isNonNegativeInteger(tileId) && tileId < tileCount
+    )) ||
+    new Set(removedTileIds).size !== removedTileIds.length
+  ) {
+    return false;
+  }
+
+  if (playback === undefined) {
+    return true;
+  }
+
+  return isRecord(playback) &&
+    isNonEmptyString(playback.id) &&
+    typeof playback.startedAt === "number" &&
+    Number.isFinite(playback.startedAt) &&
+    playback.startedAt >= 0 &&
+    isTileRecording(playback.recording) &&
+    playback.recording.rows === rows &&
+    playback.recording.columns === columns;
 }
 
 function isPortalMaskRect(value: unknown): value is PortalMaskRect {
@@ -585,4 +641,15 @@ function isNormalizedPoint(value: unknown): value is PresentationPointerPosition
     coordinate >= 0 &&
     coordinate <= 1
   ));
+}
+
+function isIntegerInRange(
+  value: unknown,
+  minimum: number,
+  maximum: number,
+): value is number {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= minimum &&
+    value <= maximum;
 }

@@ -17,8 +17,8 @@ type ComparableMotionStageProps = {
   onAdvance?: unknown;
   onInteractionState?: unknown;
   onPortalMaskRect?: unknown;
-  onScratchSegments?: unknown;
-  scratchSegments?: readonly unknown[];
+  onTileRevealState?: unknown;
+  tileRevealState?: unknown;
   portalMaskRect?: unknown;
 };
 
@@ -35,8 +35,8 @@ export function areMotionStagePropsEqual(
     previous.onAdvance === next.onAdvance &&
     previous.onInteractionState === next.onInteractionState &&
     previous.onPortalMaskRect === next.onPortalMaskRect &&
-    previous.onScratchSegments === next.onScratchSegments &&
-    previous.scratchSegments === next.scratchSegments &&
+    previous.onTileRevealState === next.onTileRevealState &&
+    previous.tileRevealState === next.tileRevealState &&
     previous.portalMaskRect === next.portalMaskRect
   );
 }

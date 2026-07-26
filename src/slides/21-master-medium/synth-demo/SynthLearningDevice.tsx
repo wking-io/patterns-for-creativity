@@ -420,6 +420,9 @@ export default function SynthLearningDevice({
 	const [vibratoDepth, setVibratoDepth] = useState(0.25)
 	const [voices, setVoices] = useState(4)
 	const [voiceDetune, setVoiceDetune] = useState(10)
+	const [chorusMix, setChorusMix] = useState(0)
+	const [delayMix, setDelayMix] = useState(0)
+	const [reverbMix, setReverbMix] = useState(0)
 
 	useEffect(() => {
 		if (!DEMO_NAMES.includes(selectedDemo)) {
@@ -473,15 +476,24 @@ export default function SynthLearningDevice({
 			lfoEnabled ? tremoloDepth : 0,
 			lfoEnabled ? vibratoDepth : 0,
 		)
+		synth.params.fx.chorusOn = chorusMix > 0
+		synth.params.fx.chorusMix = chorusMix
+		synth.params.fx.delayOn = delayMix > 0
+		synth.params.fx.delayMix = delayMix
+		synth.params.fx.reverbOn = reverbMix > 0
+		synth.params.fx.reverbMix = reverbMix
 		synth.applyParams()
 	}, [
 		attack,
+		chorusMix,
 		cutoff,
 		decay,
+		delayMix,
 		detune,
 		isReady,
 		lfoEnabled,
 		release,
+		reverbMix,
 		resonance,
 		sustain,
 		tremoloDepth,
@@ -719,11 +731,11 @@ export default function SynthLearningDevice({
 								</div>
 							</div>
 
-							<div className="pointer-events-auto grid gap-2 p-2 lg:grid-cols-6">
+							<div className="pointer-events-auto grid grid-cols-6 grid-rows-2 gap-2 p-2">
 								<ControlPanel
 									title="Oscillator"
 									description="Choose the core wave and its pitch spread."
-									className="lg:col-span-2"
+									className="col-span-2"
 								>
 									<LabeledControl label="Wave shape">
 										<Select
@@ -746,9 +758,9 @@ export default function SynthLearningDevice({
 								<ControlPanel
 									title="Envelope · ADSR"
 									description="Shape how every note begins, holds, and fades."
-									className="lg:col-span-4"
+									className="col-span-2"
 								>
-									<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+									<div className="grid grid-cols-2 gap-3">
 										<DeviceTimeControl
 											label="Attack"
 											value={attack}
@@ -793,7 +805,7 @@ export default function SynthLearningDevice({
 								<ControlPanel
 									title="Filter"
 									description="Sculpt brightness with a low-pass filter."
-									className="lg:col-span-2"
+									className="col-span-2"
 								>
 									<LabeledSlider
 										label={`Cutoff · ${Math.round(cutoff)} Hz`}
@@ -816,7 +828,7 @@ export default function SynthLearningDevice({
 								<ControlPanel
 									title="LFO"
 									description="Add tremolo and vibrato movement."
-									className="lg:col-span-2"
+									className="col-span-2"
 									action={
 										<button
 											type="button"
@@ -866,7 +878,7 @@ export default function SynthLearningDevice({
 								<ControlPanel
 									title="Voices"
 									description="Stack and detune oscillators for width."
-									className="lg:col-span-2"
+									className="col-span-2"
 								>
 									<LabeledSlider
 										label={`Unison voices · ${voices}`}
@@ -883,6 +895,37 @@ export default function SynthLearningDevice({
 										min={0}
 										max={24}
 										step={0.5}
+									/>
+								</ControlPanel>
+
+								<ControlPanel
+									title="Effects"
+									description="Add width, echoes, and space."
+									className="col-span-2"
+								>
+									<LabeledSlider
+										label={`Chorus · ${(chorusMix * 100).toFixed(0)}%`}
+										value={chorusMix}
+										onChange={setChorusMix}
+										min={0}
+										max={1}
+										step={0.01}
+									/>
+									<LabeledSlider
+										label={`Delay · ${(delayMix * 100).toFixed(0)}%`}
+										value={delayMix}
+										onChange={setDelayMix}
+										min={0}
+										max={1}
+										step={0.01}
+									/>
+									<LabeledSlider
+										label={`Reverb · ${(reverbMix * 100).toFixed(0)}%`}
+										value={reverbMix}
+										onChange={setReverbMix}
+										min={0}
+										max={1}
+										step={0.01}
 									/>
 								</ControlPanel>
 							</div>

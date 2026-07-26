@@ -4,7 +4,7 @@ import {
   acceptPresentationInteractionState,
   acceptPresentationPortalMaskState,
   acceptPresentationState,
-  acceptPresentationScratchState,
+  acceptPresentationTileRevealState,
   createAudienceBlackoutUrl,
   createAudienceConnectionState,
   createAudienceDisplayUrl,
@@ -15,9 +15,8 @@ import {
   createPresentationPortalMaskMessage,
   createPresentationStateCursor,
   createPresentationStateMessage,
-  createPresentationScratchCursor,
-  createPresentationScratchMessage,
-  createPresentationScratchSnapshot,
+  createPresentationTileRevealCursor,
+  createPresentationTileRevealMessage,
   deliverPresentationMessage,
   getInitialAudienceBlackout,
   parsePresentationMessage,
@@ -31,10 +30,10 @@ import type {
   PresentationInteractionMessage,
   PresentationInteractionState,
   PresentationPortalMaskMessage,
-  PresentationScratchMessage,
   PresentationStateMessage,
+  PresentationTileRevealMessage,
   PortalMaskRect,
-  ScratchSegment,
+  TileRevealState,
 } from "./presentation-sync";
 
 const heartbeatIntervalMs = 1_500;
@@ -46,11 +45,12 @@ type UsePresentationSessionOptions = {
   frameIndex: number;
   onAudienceState: (message: PresentationStateMessage) => void;
   onAudienceInteractionState: (message: PresentationInteractionMessage) => void;
-  onAudienceScratchState: (message: PresentationScratchMessage) => void;
   onAudiencePortalMaskState: (message: PresentationPortalMaskMessage) => void;
+  onTileRevealState: (message: PresentationTileRevealMessage) => void;
   portalMaskRect?: PortalMaskRect;
   interactionState?: PresentationInteractionState;
-  scratchSegments: readonly ScratchSegment[];
+  tileRevealFrameId?: string;
+  tileRevealState?: TileRevealState;
   viewMode: DeckViewMode;
 };
 
@@ -60,11 +60,12 @@ export function usePresentationSession({
   frameIndex,
   onAudienceState,
   onAudienceInteractionState,
-  onAudienceScratchState,
   onAudiencePortalMaskState,
+  onTileRevealState,
   portalMaskRect,
   interactionState,
-  scratchSegments,
+  tileRevealFrameId,
+  tileRevealState,
   viewMode,
 }: UsePresentationSessionOptions) {
   const [audienceConnection, setAudienceConnection] = useState(
@@ -78,10 +79,13 @@ export function usePresentationSession({
   const presenterSessionIdRef = useRef(createPeerId("presenter"));
   const audienceIdRef = useRef(createPeerId("audience"));
   const revisionRef = useRef(0);
-  const scratchRevisionRef = useRef(0);
+  const tileRevealRevisionRef = useRef(0);
   const portalMaskRevisionRef = useRef(0);
   const interactionRevisionRef = useRef(0);
-  const scratchSegmentsRef = useRef<readonly ScratchSegment[]>(scratchSegments);
+  const tileRevealSnapshotRef = useRef<{
+    frameId: string;
+    state: TileRevealState;
+  } | undefined>(undefined);
   const portalMaskRectRef = useRef<PortalMaskRect | undefined>(portalMaskRect);
   const interactionStateRef = useRef<PresentationInteractionState | undefined>(
     interactionState,
@@ -94,9 +98,14 @@ export function usePresentationSession({
     false,
   ));
   const cursorRef = useRef(createPresentationStateCursor());
-  const scratchCursorRef = useRef(createPresentationScratchCursor());
+  const tileRevealCursorsRef = useRef<
+    Record<string, ReturnType<typeof createPresentationTileRevealCursor>>
+  >({});
   const portalMaskCursorRef = useRef(createPresentationPortalMaskCursor());
   const interactionCursorRef = useRef(createPresentationInteractionCursor());
+  tileRevealSnapshotRef.current = tileRevealFrameId && tileRevealState
+    ? { frameId: tileRevealFrameId, state: tileRevealState }
+    : undefined;
 
   const updateAudienceConnection = useCallback((event: AudienceConnectionEvent) => {
     setAudienceConnection((current) => reduceAudienceConnection(current, event));
@@ -137,11 +146,15 @@ export function usePresentationSession({
 
         if (message.type === "audience-ready") {
           sendMessage(latestStateRef.current);
-          sendMessage(createPresentationScratchSnapshot(
-            presenterSessionIdRef.current,
-            scratchRevisionRef.current,
-            scratchSegmentsRef.current,
-          ));
+          const tileRevealSnapshot = tileRevealSnapshotRef.current;
+          if (tileRevealSnapshot) {
+            sendMessage(createPresentationTileRevealMessage(
+              presenterSessionIdRef.current,
+              tileRevealRevisionRef.current,
+              tileRevealSnapshot.frameId,
+              tileRevealSnapshot.state,
+            ));
+          }
           if (portalMaskRectRef.current) {
             sendMessage(createPresentationPortalMaskMessage(
               presenterSessionIdRef.current,
@@ -171,12 +184,17 @@ export function usePresentationSession({
       return;
     }
 
-    if (message.type === "presentation-scratch") {
-      const result = acceptPresentationScratchState(scratchCursorRef.current, message);
-      scratchCursorRef.current = result.cursor;
+    if (message.type === "presentation-tile-reveal") {
+      const cursor = tileRevealCursorsRef.current[message.frameId]
+        ?? createPresentationTileRevealCursor();
+      const result = acceptPresentationTileRevealState(
+        cursor,
+        message,
+      );
+      tileRevealCursorsRef.current[message.frameId] = result.cursor;
 
       if (result.accepted) {
-        onAudienceScratchState(message);
+        onTileRevealState(message);
       }
 
       return;
@@ -230,16 +248,12 @@ export function usePresentationSession({
     frameCount,
     onAudienceInteractionState,
     onAudiencePortalMaskState,
-    onAudienceScratchState,
     onAudienceState,
+    onTileRevealState,
     sendMessage,
     updateAudienceConnection,
     viewMode,
   ]);
-
-  useEffect(() => {
-    scratchSegmentsRef.current = scratchSegments;
-  }, [scratchSegments]);
 
   useEffect(() => {
     portalMaskRectRef.current = portalMaskRect;
@@ -306,16 +320,27 @@ export function usePresentationSession({
   }, [handleIncomingMessage, sendMessage, viewMode]);
 
   useEffect(() => {
-    if (viewMode !== "presenter") {
+    if (
+      viewMode !== "presenter" ||
+      !tileRevealFrameId ||
+      !tileRevealState
+    ) {
       return;
     }
 
-    sendMessage(createPresentationScratchSnapshot(
+    tileRevealRevisionRef.current += 1;
+    sendMessage(createPresentationTileRevealMessage(
       presenterSessionIdRef.current,
-      scratchRevisionRef.current,
-      scratchSegmentsRef.current,
+      tileRevealRevisionRef.current,
+      tileRevealFrameId,
+      tileRevealState,
     ));
-  }, [sendMessage, viewMode]);
+  }, [
+    sendMessage,
+    tileRevealFrameId,
+    tileRevealState,
+    viewMode,
+  ]);
 
   useEffect(() => {
     if (viewMode !== "presenter") {
@@ -406,21 +431,6 @@ export function usePresentationSession({
     ));
   }, [audienceConnection.status, viewMode]);
 
-  const broadcastScratchSegments = useCallback((segments: readonly ScratchSegment[]) => {
-    if (viewMode !== "presenter" || segments.length === 0) {
-      return;
-    }
-
-    scratchRevisionRef.current += 1;
-    scratchSegmentsRef.current = [...scratchSegmentsRef.current, ...segments];
-    sendMessage(createPresentationScratchMessage(
-      presenterSessionIdRef.current,
-      scratchRevisionRef.current,
-      "append",
-      segments,
-    ));
-  }, [sendMessage, viewMode]);
-
   const broadcastPortalMaskRect = useCallback((rect: PortalMaskRect) => {
     if (viewMode !== "presenter") {
       return;
@@ -453,7 +463,6 @@ export function usePresentationSession({
     audienceStatus: audienceConnection.status,
     broadcastInteractionState,
     broadcastPortalMaskRect,
-    broadcastScratchSegments,
     isAudienceBlackout,
     openAudienceDisplay,
     toggleAudienceBlackout,

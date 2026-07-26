@@ -17,6 +17,7 @@ export type FeedbackPracticeSlideVariant =
   | "language-is-power"
   | "optimize-for-exploration"
   | "artifacts-less-sacred"
+  | "perspectives-possibilities"
   | "reality-output-artifacts"
   | "tweet";
 
@@ -82,14 +83,14 @@ export function FeedbackPracticeSlide({
 
   const promptCopy = {
     intro: {
-      counter: "01 / 02",
+      counter: "01/03",
       headline: "Make feedback find you",
-      topic: "Catalysts",
+      topic: "From The Work",
     },
     "practice-2": {
-      counter: "02 / 02",
-      headline: "Seek the source not the surface",
-      topic: "Catalysts",
+      counter: "02/03",
+      headline: "Seek the source not the signal",
+      topic: "From The Work",
     },
     "friction-ask-why": {
       counter: "01 / 03",
@@ -97,9 +98,9 @@ export function FeedbackPracticeSlide({
       topic: "Friction",
     },
     "friction-aperture": {
-      counter: "02 / 03",
+      counter: "03/03",
       headline: "Change your aperture",
-      topic: "Friction",
+      topic: "From The Work",
     },
     "friction-unspoken": {
       counter: "03 / 03",
@@ -132,13 +133,18 @@ export function FeedbackPracticeSlide({
       topic: "Ideas",
     },
     "optimize-for-exploration": {
-      counter: "01 / 02",
+      counter: "01 / 03",
       headline: "Optimize for exploration",
       topic: "Taste",
     },
     "artifacts-less-sacred": {
-      counter: "02 / 02",
+      counter: "02 / 03",
       headline: "Makes artifacts less sacred",
+      topic: "Taste",
+    },
+    "perspectives-possibilities": {
+      counter: "03 / 03",
+      headline: "More perspectives more possibilities",
       topic: "Taste",
     },
     "reality-output-artifacts": {
@@ -151,7 +157,8 @@ export function FeedbackPracticeSlide({
     variant === "master-your-medium" ||
     variant === "language-is-power" ||
     variant === "optimize-for-exploration" ||
-    variant === "artifacts-less-sacred";
+    variant === "artifacts-less-sacred" ||
+    variant === "perspectives-possibilities";
 
   return (
     <div

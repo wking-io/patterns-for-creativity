@@ -1,16 +1,19 @@
 import { useId } from "react";
 import { motion } from "motion/react";
-import exposureTextUrl from "./exposure-text.svg";
 import exposureUrl from "./exposure.svg";
-import feedbackTextUrl from "./feedback-text.svg";
 import feedbackUrl from "./feedback.svg";
-import frictionTextUrl from "./friction-text.svg";
 import frictionUrl from "./friction.svg";
+import exposureInnerUrl from "../14-feedback/exposure-inner.svg";
+import feedbackInnerUrl from "../14-feedback/feedback-inner.svg";
+import frameUrl from "../14-feedback/frame.svg";
 
 type CatalystSlideProps = {
   className?: string;
   isAnimated?: boolean;
+  variant?: CatalystSlideVariant;
 };
+
+export type CatalystSlideVariant = "default" | "world-reveal";
 
 export type CatalystOutcomesStep = 0 | 1 | 2 | 3;
 
@@ -22,57 +25,136 @@ type CatalystOutcomesSlideProps = CatalystSlideProps & {
 const catalysts = [
   {
     id: "feedback",
-    iconUrl: feedbackUrl,
-    label: "Feedback",
-    labelUrl: feedbackTextUrl,
-  },
-  {
-    id: "friction",
-    iconUrl: frictionUrl,
-    label: "Friction",
-    labelUrl: frictionTextUrl,
+    iconInnerUrl: feedbackInnerUrl,
+    label: "From The Work",
+    layoutKey: "work",
   },
   {
     id: "exposure",
-    iconUrl: exposureUrl,
-    label: "Exposure",
-    labelUrl: exposureTextUrl,
+    iconInnerUrl: exposureInnerUrl,
+    label: "From The World",
+    layoutKey: "world",
   },
 ] as const;
 
 export function CatalystSlide({
   className = "",
   isAnimated = true,
+  variant = "default",
 }: CatalystSlideProps) {
+  const isWorldReveal = variant === "world-reveal";
+  const strikeDelay = 0.18;
+  const rowTransitionDelay = 0.36;
+
   return (
-    <div className={`catalyst-slide ${className}`.trim()}>
-      {catalysts.map(({ id, iconUrl, label, labelUrl }, index) => (
-        <motion.div
-          animate={{ opacity: 1, x: 0 }}
-          className={`catalyst-slide__item catalyst-slide__item--${id}`}
-          initial={isAnimated ? { opacity: 0, x: 18 } : false}
-          key={id}
-          transition={{
-            delay: index * 0.14,
-            duration: 0.36,
-            ease: [0.16, 1, 0.3, 1],
-          }}
-        >
-          <img
-            alt=""
-            aria-hidden="true"
-            className="catalyst-slide__icon"
-            draggable={false}
-            src={iconUrl}
-          />
-          <img
-            alt={label}
-            className="catalyst-slide__label"
-            draggable={false}
-            src={labelUrl}
-          />
-        </motion.div>
-      ))}
+    <div
+      className={`catalyst-slide catalyst-slide--${variant} ${className}`.trim()}
+    >
+      <div className="catalyst-slide__list">
+        {catalysts.map(({ id, iconInnerUrl, label, layoutKey }, index) => {
+          const isWorkRow = id === "feedback";
+          const animate = isWorldReveal
+            ? isWorkRow
+              ? {
+                  opacity: 0,
+                  x: 0,
+                  y: "calc(var(--motion-deck-height) * -0.035)",
+                }
+              : {
+                  opacity: 1,
+                  x: 0,
+                  y: "calc(var(--motion-deck-height) * -0.115)",
+                }
+            : { opacity: 1, x: 0, y: 0 };
+          const initial =
+            isAnimated && isWorldReveal
+              ? { opacity: 1, x: 0, y: 0 }
+              : isAnimated
+                ? { opacity: 0, x: 18, y: 0 }
+                : false;
+          const transition = isWorldReveal
+            ? {
+                delay: isAnimated ? rowTransitionDelay : 0,
+                duration: isAnimated ? (isWorkRow ? 0.38 : 0.54) : 0,
+                ease: [0.16, 1, 0.3, 1] as const,
+              }
+            : {
+                delay: index * 0.14,
+                duration: 0.36,
+                ease: [0.16, 1, 0.3, 1] as const,
+              };
+
+          return (
+            <motion.div
+              animate={animate}
+              className={`catalyst-slide__item catalyst-slide__item--${id}`}
+              initial={initial}
+              key={id}
+              transition={{
+                ...transition,
+              }}
+            >
+              <motion.div
+                className="catalyst-slide__icon"
+                layoutId={`from-${layoutKey}-catalyst-icon`}
+                transition={{
+                  layout: {
+                    duration: 0.62,
+                    ease: [0.16, 1, 0.3, 1],
+                  },
+                }}
+              >
+                <img
+                  alt=""
+                  aria-hidden="true"
+                  className="catalyst-slide__icon-frame"
+                  draggable={false}
+                  src={frameUrl}
+                />
+                <img
+                  alt=""
+                  aria-hidden="true"
+                  className="catalyst-slide__icon-inner"
+                  draggable={false}
+                  src={iconInnerUrl}
+                />
+              </motion.div>
+              <motion.span
+                className="catalyst-slide__label"
+                layout="position"
+                layoutId={`from-${layoutKey}-catalyst-label`}
+                transition={{
+                  layout: {
+                    duration: 0.62,
+                    ease: [0.16, 1, 0.3, 1],
+                  },
+                }}
+              >
+                {label}
+                {isWorldReveal && isWorkRow ? (
+                  <motion.span
+                    animate={{ scaleX: 1 }}
+                    aria-hidden="true"
+                    className="catalyst-slide__label-strike"
+                    initial={isAnimated ? { scaleX: 0 } : false}
+                    transition={{
+                      delay: isAnimated ? strikeDelay : 0,
+                      ...(isAnimated
+                        ? {
+                            type: "spring",
+                            stiffness: 540,
+                            damping: 24,
+                            mass: 0.42,
+                          }
+                        : { duration: 0 }),
+                    }}
+                  />
+                ) : null}
+              </motion.span>
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 }

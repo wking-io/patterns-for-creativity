@@ -10,6 +10,7 @@ import creativePathFogUrl from "./fog.webp";
 export type CreativePathVariant = "original" | "alt-1" | "alt-2";
 
 type CreativePathSlideProps = {
+  animationSpeed?: number;
   className?: string;
   isAnimated?: boolean;
   isFogVisible?: boolean;
@@ -55,6 +56,7 @@ function getSvgPath(svg: string) {
 }
 
 export function CreativePathSlide({
+  animationSpeed = 1,
   className = "",
   isAnimated = false,
   isFogVisible = false,
@@ -62,6 +64,7 @@ export function CreativePathSlide({
 }: CreativePathSlideProps) {
   const animation = isAnimated;
   const activePath = pathVariants[pathVariant];
+  const time = (seconds: number) => seconds / animationSpeed;
 
   return (
     <div className={`creative-path-slide ${className}`.trim()}>
@@ -75,7 +78,7 @@ export function CreativePathSlide({
         <motion.line
           animate={{ x1: readyX }}
           initial={animation ? { x1: startX } : false}
-          transition={animation ? { delay: settleDelay, duration: shortenDuration, ease: easeOut } : immediate}
+          transition={animation ? { delay: time(settleDelay), duration: time(shortenDuration), ease: easeOut } : immediate}
           x1={readyX}
           x2={lineEndX}
           y1={timelineY}
@@ -87,7 +90,7 @@ export function CreativePathSlide({
         <motion.g
           animate={{ x: readyX }}
           initial={animation ? { x: startX } : false}
-          transition={animation ? { delay: settleDelay, duration: shortenDuration, ease: easeOut } : immediate}
+          transition={animation ? { delay: time(settleDelay), duration: time(shortenDuration), ease: easeOut } : immediate}
         >
           <ellipse cx="0" cy={timelineY} rx="35" ry="24" fill="#372E2A" />
           <line x1="0" y1={timelineY} x2="0" y2={markerTopY} stroke="#372E2A" strokeWidth="4" />
@@ -100,7 +103,7 @@ export function CreativePathSlide({
           height="192"
           href={startUrl}
           initial={animation ? { opacity: 1, x: 0 } : false}
-          transition={animation ? { delay: settleDelay, duration: shortenDuration, ease: easeOut, times: [0, 0.7, 1] } : immediate}
+          transition={animation ? { delay: time(settleDelay), duration: time(shortenDuration), ease: easeOut, times: [0, 0.7, 1] } : immediate}
           width="261.6"
           x="569.2"
           y="799"
@@ -111,7 +114,7 @@ export function CreativePathSlide({
           height="192"
           href={readyUrl}
           initial={animation ? { opacity: 0, y: 24 } : false}
-          transition={animation ? { delay: readyDelay, duration: 0.28, ease: easeOut } : immediate}
+          transition={animation ? { delay: time(readyDelay), duration: time(0.28), ease: easeOut } : immediate}
           width="268.8"
           x="2605.6"
           y="799"
@@ -122,7 +125,7 @@ export function CreativePathSlide({
           cy={timelineY}
           fill="#372E2A"
           initial={animation ? { rx: 0, ry: 0 } : false}
-          transition={animation ? { delay: startEllipseDelay, duration: 0.24, ease: easeOut } : immediate}
+          transition={animation ? { delay: time(startEllipseDelay), duration: time(0.24), ease: easeOut } : immediate}
           cx={startX}
           rx="35"
           ry="24"
@@ -132,7 +135,7 @@ export function CreativePathSlide({
           initial={animation ? { y2: timelineY } : false}
           stroke="#372E2A"
           strokeWidth="4"
-          transition={animation ? { delay: startRiserDelay, duration: 0.32, ease: easeOut } : immediate}
+          transition={animation ? { delay: time(startRiserDelay), duration: time(0.32), ease: easeOut } : immediate}
           x1={startX}
           x2={startX}
           y1={timelineY}
@@ -143,7 +146,7 @@ export function CreativePathSlide({
           initial={animation ? { y2: timelineY } : false}
           stroke="#F3F1F1"
           strokeWidth="4"
-          transition={animation ? { delay: startRiserDelay + 0.03, duration: 0.3, ease: easeOut } : immediate}
+          transition={animation ? { delay: time(startRiserDelay + 0.03), duration: time(0.3), ease: easeOut } : immediate}
           x1={startX - 4}
           x2={startX - 4}
           y1={timelineY}
@@ -153,7 +156,7 @@ export function CreativePathSlide({
           animate={{ cy: markerCircleY, r: 7 }}
           fill="#372E2A"
           initial={animation ? { cy: timelineY, r: 0 } : false}
-          transition={animation ? { delay: startRiserDelay, duration: 0.32, ease: easeOut } : immediate}
+          transition={animation ? { delay: time(startRiserDelay), duration: time(0.32), ease: easeOut } : immediate}
           cx={startX}
           cy={markerCircleY}
           r="7"
@@ -163,7 +166,7 @@ export function CreativePathSlide({
           height="192"
           href={startUrl}
           initial={animation ? { opacity: 0, y: 28 } : false}
-          transition={animation ? { delay: startRiserDelay + 0.15, duration: 0.3, ease: easeOut } : immediate}
+          transition={animation ? { delay: time(startRiserDelay + 0.15), duration: time(0.3), ease: easeOut } : immediate}
           width="261.6"
           x="569.2"
           y="799"
@@ -179,7 +182,7 @@ export function CreativePathSlide({
           strokeLinecap="round"
           strokeWidth="4"
           transform={activePath.transform}
-          transition={animation ? { delay: traceDelay, duration: traceDuration, ease: [0.37, 0, 0.63, 1] } : immediate}
+          transition={animation ? { delay: time(traceDelay), duration: time(traceDuration), ease: [0.37, 0, 0.63, 1] } : immediate}
         />
 
         <ellipse cx={finishX} cy={timelineY} rx="35" ry="24" fill="#372E2A" />

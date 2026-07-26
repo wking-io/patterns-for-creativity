@@ -4,6 +4,7 @@ import { motionDeckFrames } from "./frames";
 import { MotionStage } from "./MotionStage";
 import { PresenterView } from "./PresenterView";
 import {
+  createDefaultTileRevealState,
   getDeckViewMode,
 } from "./presentation-sync";
 import type {
@@ -11,8 +12,8 @@ import type {
   PresentationInteractionMessage,
   PresentationInteractionState,
   PresentationPortalMaskMessage,
-  PresentationScratchMessage,
-  ScratchSegment,
+  PresentationTileRevealMessage,
+  TileRevealState,
 } from "./presentation-sync";
 import { usePresentationSession } from "./usePresentationSession";
 import {
@@ -33,11 +34,16 @@ export function MotionDeckApp() {
     getInitialDeckNavigationState(window.location.hash, frameCount)
   ));
   const [isGridVisible, setIsGridVisible] = useState(false);
-  const [scratchSegments, setScratchSegments] = useState<ScratchSegment[]>([]);
+  const [tileRevealStates, setTileRevealStates] = useState<
+    Record<string, TileRevealState>
+  >(
+    createInitialTileRevealStates,
+  );
   const [portalMaskRect, setPortalMaskRect] = useState<PortalMaskRect>();
   const [interactionState, setInteractionState] = useState<PresentationInteractionState>();
   const touchStartRef = useRef<{ x: number; y: number } | undefined>(undefined);
   const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[0];
+  const tileRevealState = tileRevealStates[frame.id];
   const viewMode = getDeckViewMode(window.location.search);
   const isPresenterView = viewMode === "presenter";
   const isAudienceView = viewMode === "audience";
@@ -66,12 +72,13 @@ export function MotionDeckApp() {
     });
   }, []);
 
-  const applyAudienceScratchState = useCallback((message: PresentationScratchMessage) => {
-    setScratchSegments((current) => (
-      message.mode === "replace"
-        ? message.segments
-        : [...current, ...message.segments]
-    ));
+  const applyAudienceTileRevealState = useCallback((
+    message: PresentationTileRevealMessage,
+  ) => {
+    setTileRevealStates((current) => ({
+      ...current,
+      [message.frameId]: message.state,
+    }));
   }, []);
 
   const applyAudiencePortalMaskState = useCallback((message: PresentationPortalMaskMessage) => {
@@ -86,7 +93,6 @@ export function MotionDeckApp() {
     audienceStatus,
     broadcastInteractionState,
     broadcastPortalMaskRect,
-    broadcastScratchSegments,
     isAudienceBlackout,
     openAudienceDisplay,
     toggleAudienceBlackout,
@@ -97,17 +103,23 @@ export function MotionDeckApp() {
     interactionState,
     onAudienceInteractionState: applyAudienceInteractionState,
     onAudiencePortalMaskState: applyAudiencePortalMaskState,
-    onAudienceScratchState: applyAudienceScratchState,
     onAudienceState: applyAudienceState,
+    onTileRevealState: applyAudienceTileRevealState,
     portalMaskRect,
-    scratchSegments,
+    tileRevealFrameId: tileRevealState ? frame.id : undefined,
+    tileRevealState,
     viewMode,
   });
 
-  const handleScratchSegments = useCallback((segments: ScratchSegment[]) => {
-    setScratchSegments((current) => [...current, ...segments]);
-    broadcastScratchSegments(segments);
-  }, [broadcastScratchSegments]);
+  const handleTileRevealState = useCallback((
+    tileFrameId: string,
+    state: TileRevealState,
+  ) => {
+    setTileRevealStates((current) => ({
+      ...current,
+      [tileFrameId]: state,
+    }));
+  }, []);
 
   const handlePortalMaskRect = useCallback((rect: PortalMaskRect) => {
     setPortalMaskRect(rect);
@@ -240,11 +252,11 @@ export function MotionDeckApp() {
           onOpenAudience={openAudienceDisplay}
           onInteractionState={handleInteractionState}
           onPortalMaskRect={handlePortalMaskRect}
-          onScratchSegments={handleScratchSegments}
+          onTileRevealState={handleTileRevealState}
           onToggleAudienceBlackout={toggleAudienceBlackout}
           portalMaskRect={portalMaskRect}
           interactionState={interactionState}
-          scratchSegments={scratchSegments}
+          tileRevealStates={tileRevealStates}
         />
       ) : isAudienceView && isAudienceBlackout ? (
         <main aria-label="Audience display blacked out" className="audience-blackout" />
@@ -264,8 +276,8 @@ export function MotionDeckApp() {
               onAdvance={isAudienceView ? undefined : controls.goNext}
               onPortalMaskRect={isAudienceView ? undefined : handlePortalMaskRect}
               onInteractionState={isAudienceView ? undefined : handleInteractionState}
-              onScratchSegments={isAudienceView ? undefined : handleScratchSegments}
-              scratchSegments={scratchSegments}
+              onTileRevealState={isAudienceView ? undefined : handleTileRevealState}
+              tileRevealState={tileRevealState}
               portalMaskRect={portalMaskRect}
             />
           </div>
@@ -273,6 +285,26 @@ export function MotionDeckApp() {
       )}
     </MotionConfig>
   );
+}
+
+function createInitialTileRevealStates() {
+  const defaults = createDefaultTileRevealState();
+
+  return motionDeckFrames.reduce<Record<string, TileRevealState>>((states, frame) => {
+    if (
+      frame.tileRevealRows === undefined &&
+      frame.tileRevealColumns === undefined
+    ) {
+      return states;
+    }
+
+    states[frame.id] = {
+      rows: frame.tileRevealRows ?? defaults.rows,
+      columns: frame.tileRevealColumns ?? defaults.columns,
+      removedTileIds: [],
+    };
+    return states;
+  }, {});
 }
 
 function writeFrameHash(frameIndex: number, mode: "push" | "replace" = "push") {
