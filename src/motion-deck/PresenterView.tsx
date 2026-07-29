@@ -21,10 +21,6 @@ import type {
   TileRevealState,
 } from "./presentation-sync";
 import {
-  createElapsedTimerState,
-  elapsedTimerReducer,
-  formatElapsedTime,
-  getElapsedMilliseconds,
   notesTextSizeOptions,
   readNotesTextSize,
   writeNotesTextSize,
@@ -38,6 +34,7 @@ type PresenterViewProps = {
   isGridVisible: boolean;
   onNext: () => void;
   onOpenAudience: () => void;
+  onPrevious: () => void;
   onInteractionState: (state: PresentationInteractionState) => void;
   onPortalMaskRect: (rect: PortalMaskRect) => void;
   onTileRevealState: (frameId: string, state: TileRevealState) => void;
@@ -55,6 +52,7 @@ export function PresenterView({
   isGridVisible,
   onNext,
   onOpenAudience,
+  onPrevious,
   onInteractionState,
   onPortalMaskRect,
   onTileRevealState,
@@ -68,15 +66,10 @@ export function PresenterView({
     undefined,
     createInitialPresentationNotesSession,
   );
-  const [timer, dispatchTimer] = useReducer(
-    elapsedTimerReducer,
-    undefined,
-    createElapsedTimerState,
-  );
-  const [now, setNow] = useState(() => Date.now());
   const [notesTextSize, setNotesTextSize] = useState<number>(() => (
     readNotesTextSize(getPresenterPreferenceStorage())
   ));
+  const [isNotesFooterVisible, setIsNotesFooterVisible] = useState(true);
   const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[0];
   const nextFrame = motionDeckFrames[frameIndex + 1];
   const currentNote = selectSessionNote(notesSession, frame.id);
@@ -87,13 +80,6 @@ export function PresenterView({
   const canToggleAudienceBlackout = (
     audienceStatus === "connected" || isAudienceBlackout
   );
-  const elapsedTime = formatElapsedTime(getElapsedMilliseconds(timer, now));
-  const timerAction = timer.status === "idle"
-    ? "Start"
-    : timer.status === "running"
-      ? "Pause"
-      : "Resume";
-
   const handleSave = useCallback(async () => {
     if (notesSession.phase === "saving" || !notesSession.isDirty) {
       return;
@@ -116,11 +102,6 @@ export function PresenterView({
   const updateCurrentNote = (note: SpeakerNote) => {
     dispatchNotes({ type: "edit-note", frameId: frame.id, note });
   };
-
-  useEffect(() => {
-    const clockTimer = window.setInterval(() => setNow(Date.now()), 1_000);
-    return () => window.clearInterval(clockTimer);
-  }, []);
 
   useEffect(() => {
     writeNotesTextSize(getPresenterPreferenceStorage(), notesTextSize);
@@ -154,118 +135,65 @@ export function PresenterView({
     return () => window.removeEventListener("keydown", handleSaveShortcut);
   }, [handleSave]);
 
-  const handleTimerAction = () => {
-    const at = Date.now();
-
-    if (timer.status === "idle") {
-      dispatchTimer({ type: "start", at });
-    } else if (timer.status === "running") {
-      dispatchTimer({ type: "pause", at });
-    } else {
-      dispatchTimer({ type: "resume", at });
-    }
-
-    setNow(at);
-  };
-
   return (
     <main className="presenter-view-root">
       <header className="presenter-view-header">
-        <section aria-label="Presentation timing" className="presenter-timing">
-          <output className="presenter-elapsed-time" data-timer-status={timer.status}>
-            {elapsedTime}
-          </output>
-          <div className="presenter-timer-actions">
-            <button
-              aria-label={timerAction}
-              className="presenter-timer-icon-control"
-              onClick={handleTimerAction}
-              title={timerAction}
-              type="button"
+        <section aria-label="Presentation navigation" className="presenter-navigation">
+          <button
+            aria-keyshortcuts="ArrowLeft"
+            aria-label="Previous frame"
+            className="presenter-navigation-control"
+            disabled={frameIndex === 0}
+            onClick={onPrevious}
+            title="Previous frame"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              height="24"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              {timer.status === "running" ? (
-                <svg
-                  aria-hidden="true"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M4 4V20H9V4H4Z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="square"
-                    strokeWidth="2"
-                  />
-                  <path
-                    d="M15 4V20H20V4H15Z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="square"
-                    strokeWidth="2"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  aria-hidden="true"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M6 4V20L20 12L6 4Z"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="square"
-                    strokeWidth="2"
-                  />
-                </svg>
-              )}
-            </button>
-            <button
-              aria-label="Reset timer"
-              className="presenter-timer-icon-control"
-              disabled={timer.status === "idle"}
-              onClick={() => {
-                dispatchTimer({ type: "reset" });
-                setNow(Date.now());
-              }}
-              title="Reset timer"
-              type="button"
-            >
-              <svg
-                aria-hidden="true"
-                height="24"
-                viewBox="0 0 24 24"
-                width="24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M6 15.5L2.5 19L6 22.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="square"
-                  strokeMiterlimit="10"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M18 8.5L21.5 5L18 1.5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="square"
-                  strokeMiterlimit="10"
-                  strokeWidth="2"
-                />
-                <path d="M22 20H2.5V18H20V11.7402L22 9.74023V20Z" fill="currentColor" />
-                <path d="M21.5 6H4V12.2617L2 14.2617V4H21.5V6Z" fill="currentColor" />
-              </svg>
-            </button>
-          </div>
+              <path
+                d="M15 4L7 12L15 20"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                strokeWidth="2"
+              />
+            </svg>
+          </button>
           <span className="presenter-frame-position">
             {frameIndex + 1} / {motionDeckFrames.length}
           </span>
+          <button
+            aria-keyshortcuts="ArrowRight"
+            aria-label="Next frame"
+            className="presenter-navigation-control"
+            disabled={frameIndex === motionDeckFrames.length - 1}
+            onClick={onNext}
+            title="Next frame"
+            type="button"
+          >
+            <svg
+              aria-hidden="true"
+              height="24"
+              viewBox="0 0 24 24"
+              width="24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M9 4L17 12L9 20"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="square"
+                strokeLinejoin="miter"
+                strokeWidth="2"
+              />
+            </svg>
+          </button>
         </section>
         <div className="presenter-view-header__status">
           <div className="presenter-view-header__presentation-actions">
@@ -277,6 +205,48 @@ export function PresenterView({
             >
               <strong>{audienceStatusContent.label}</strong>
             </span>
+            <button
+              aria-label={isNotesFooterVisible ? "Hide notes footer" : "Show notes footer"}
+              aria-pressed={isNotesFooterVisible}
+              className="presenter-notes-footer-control"
+              onClick={() => setIsNotesFooterVisible((isVisible) => !isVisible)}
+              title={isNotesFooterVisible ? "Hide notes footer" : "Show notes footer"}
+              type="button"
+            >
+              <svg
+                aria-hidden="true"
+                height="24"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M3 4H21V20H3V4Z"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeLinecap="square"
+                  strokeLinejoin="miter"
+                  strokeWidth="2"
+                />
+                {isNotesFooterVisible ? (
+                  <path
+                    d="M3 15H21"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                ) : (
+                  <path
+                    d="M5 18L19 6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="square"
+                    strokeWidth="2"
+                  />
+                )}
+              </svg>
+            </button>
             <button
               aria-label={isAudienceBlackout ? "Restore audience" : "Black out audience"}
               aria-keyshortcuts="B"
@@ -505,89 +475,91 @@ export function PresenterView({
             />
           </div>
 
-          <div className="presenter-notes-panel__footer">
-            <div className="presenter-notes-text-size">
-              <NumberField.Root
-                className="presenter-notes-text-size__field"
-                max={notesTextSizeOptions.at(-1)}
-                min={notesTextSizeOptions[0]}
-                onValueChange={(value) => {
-                  if (value !== null) {
-                    setNotesTextSize(value);
-                  }
-                }}
-                snapOnStep
-                step={2}
-                value={notesTextSize}
-              >
-                <NumberField.Group className="presenter-notes-text-size__group">
-                  <NumberField.Decrement
-                    aria-label="Decrease notes text size"
-                    className="presenter-notes-text-size__stepper"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      width="24"
-                      xmlns="http://www.w3.org/2000/svg"
+          {isNotesFooterVisible ? (
+            <div className="presenter-notes-panel__footer">
+              <div className="presenter-notes-text-size">
+                <NumberField.Root
+                  className="presenter-notes-text-size__field"
+                  max={notesTextSizeOptions.at(-1)}
+                  min={notesTextSizeOptions[0]}
+                  onValueChange={(value) => {
+                    if (value !== null) {
+                      setNotesTextSize(value);
+                    }
+                  }}
+                  snapOnStep
+                  step={2}
+                  value={notesTextSize}
+                >
+                  <NumberField.Group className="presenter-notes-text-size__group">
+                    <NumberField.Decrement
+                      aria-label="Decrease notes text size"
+                      className="presenter-notes-text-size__stepper"
                     >
-                      <path
-                        d="M3 12L21 12"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinecap="square"
-                        strokeWidth="2"
-                      />
-                    </svg>
-                  </NumberField.Decrement>
-                  <NumberField.Input
-                    aria-label="Notes text size in pixels"
-                    className="presenter-notes-text-size__input"
-                  />
-                  <NumberField.Increment
-                    aria-label="Increase notes text size"
-                    className="presenter-notes-text-size__stepper"
-                  >
-                    <svg
-                      aria-hidden="true"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      width="24"
-                      xmlns="http://www.w3.org/2000/svg"
+                      <svg
+                        aria-hidden="true"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        width="24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M3 12L21 12"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeLinecap="square"
+                          strokeWidth="2"
+                        />
+                      </svg>
+                    </NumberField.Decrement>
+                    <NumberField.Input
+                      aria-label="Notes text size in pixels"
+                      className="presenter-notes-text-size__input"
+                    />
+                    <NumberField.Increment
+                      aria-label="Increase notes text size"
+                      className="presenter-notes-text-size__stepper"
                     >
-                      <path
-                        d="M3 12H21"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinecap="square"
-                        strokeMiterlimit="10"
-                        strokeWidth="2"
-                      />
-                      <path
-                        d="M12 3V21"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeLinecap="square"
-                        strokeMiterlimit="10"
-                        strokeWidth="2"
-                      />
-                    </svg>
-                  </NumberField.Increment>
-                </NumberField.Group>
-              </NumberField.Root>
+                      <svg
+                        aria-hidden="true"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        width="24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M3 12H21"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeLinecap="square"
+                          strokeMiterlimit="10"
+                          strokeWidth="2"
+                        />
+                        <path
+                          d="M12 3V21"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeLinecap="square"
+                          strokeMiterlimit="10"
+                          strokeWidth="2"
+                        />
+                      </svg>
+                    </NumberField.Increment>
+                  </NumberField.Group>
+                </NumberField.Root>
+              </div>
+              <div className="presenter-notes-file-actions">
+                <button
+                  className="presenter-button--primary"
+                  disabled={!notesSession.isDirty || notesSession.phase === "saving"}
+                  onClick={() => void handleSave()}
+                  type="button"
+                >
+                  Save changes
+                </button>
+              </div>
             </div>
-            <div className="presenter-notes-file-actions">
-              <button
-                className="presenter-button--primary"
-                disabled={!notesSession.isDirty || notesSession.phase === "saving"}
-                onClick={() => void handleSave()}
-                type="button"
-              >
-                Save changes
-              </button>
-            </div>
-          </div>
+          ) : null}
         </section>
       </div>
     </main>

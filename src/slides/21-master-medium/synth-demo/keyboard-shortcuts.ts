@@ -1,6 +1,7 @@
 export type SynthShortcutTarget = {
 	inputMode?: string
 	isContentEditable?: boolean
+	readOnly?: boolean
 	tagName?: string
 	type?: string
 }
@@ -30,6 +31,7 @@ export function isSynthShortcutTypingTarget(target: SynthShortcutTarget) {
 	const tagName = target.tagName?.toUpperCase()
 	if (tagName === 'TEXTAREA') return true
 	if (tagName !== 'INPUT') return false
+	if (target.readOnly) return false
 
 	const inputMode = target.inputMode?.toLowerCase()
 	if (inputMode === 'decimal' || inputMode === 'numeric') return false

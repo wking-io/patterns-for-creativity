@@ -17,7 +17,9 @@ const isSlideOrganizer = (
 );
 
 if (!isSlideOrganizer) {
-  await prepareOfflineAssets();
+  void prepareOfflineAssets().catch((error) => {
+    console.error("Offline asset preparation failed.", error);
+  });
 }
 
 createRoot(root).render(

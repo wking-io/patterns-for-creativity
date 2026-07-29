@@ -1,4 +1,5 @@
-import filterTextureUrl from "../../filter.webp";
+import colorBurnTextureUrl from "../../filter-randomized-color-burn.webp";
+import softLightTextureUrl from "../../filter-randomized-soft-light.webp";
 
 export type SlideKind =
   | "cover"
@@ -45,8 +46,8 @@ export function SlideGridOverlay({ enabled }: { enabled: boolean }) {
 export function SlideTextureOverlay() {
   return (
     <>
-      <img alt="" aria-hidden="true" className="slide-texture-overlay slide-texture-overlay--color-burn" src={filterTextureUrl} />
-      <img alt="" aria-hidden="true" className="slide-texture-overlay slide-texture-overlay--soft-light" src={filterTextureUrl} />
+      <img alt="" aria-hidden="true" className="slide-texture-overlay slide-texture-overlay--color-burn" src={colorBurnTextureUrl} />
+      <img alt="" aria-hidden="true" className="slide-texture-overlay slide-texture-overlay--soft-light" src={softLightTextureUrl} />
     </>
   );
 }

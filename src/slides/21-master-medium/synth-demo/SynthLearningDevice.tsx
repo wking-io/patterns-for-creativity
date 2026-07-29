@@ -13,23 +13,17 @@ import {
 	DeviceTimeControl,
 } from './components/device/value-control'
 import { toFreq } from './lib/music'
-import type { VoiceHandle } from './lib/synth'
+import type { SynthWaveform, VoiceHandle } from './lib/synth'
 import { SynthEngine } from './lib/synth'
 import { isSynthShortcutTypingTarget } from './keyboard-shortcuts'
-
-type DemoStep = {
-	label: string
-	notes: number[]
-	beats: number
-	gate?: number
-	section?: string
-}
-
-type DemoPattern = {
-	name: string
-	description: string
-	steps: DemoStep[]
-}
+import {
+	REFERENCE_PATCH,
+	REFERENCE_PATTERN,
+	REFERENCE_TEMPO,
+	type DemoPattern,
+	type DemoStep,
+} from './reference-preset'
+import type { SynthPresentationState } from './presentation-state'
 
 const DEMO_MOTIFS: DemoPattern[] = [
 	{
@@ -322,44 +316,47 @@ function arrangeSection(
 	})
 }
 
-const DEMO_PATTERNS: DemoPattern[] = DEMO_MOTIFS.map((motif) => ({
-	...motif,
-	description: `${motif.description} A long-form arrangement with evolving sections.`,
-	steps: [
-		...arrangeSection('Intro', motif.steps, {
-			beatScale: 1.5,
-			gateScale: 1.12,
-		}),
-		...arrangeSection('Verse I', motif.steps),
-		...arrangeSection('Verse II', motif.steps, { transpose: 5 }),
-		...arrangeSection('Lift', motif.steps, {
-			transpose: 2,
-			reverse: true,
-			beatScale: 0.75,
-		}),
-		...arrangeSection('Chorus', motif.steps, {
-			transpose: 12,
-			beatScale: 0.75,
-			gateScale: 1.12,
-		}),
-		...arrangeSection('Break', motif.steps, {
-			transpose: -3,
-			reverse: true,
-			beatScale: 1.25,
-			gateScale: 1.18,
-		}),
-		...arrangeSection('Finale', motif.steps, {
-			transpose: 7,
-			beatScale: 0.75,
-			gateScale: 1.15,
-		}),
-		...arrangeSection('Outro', motif.steps, {
-			reverse: true,
-			beatScale: 1.5,
-			gateScale: 1.2,
-		}),
-	],
-}))
+const DEMO_PATTERNS: DemoPattern[] = [
+	REFERENCE_PATTERN,
+	...DEMO_MOTIFS.map((motif) => ({
+		...motif,
+		description: `${motif.description} A long-form arrangement with evolving sections.`,
+		steps: [
+			...arrangeSection('Intro', motif.steps, {
+				beatScale: 1.5,
+				gateScale: 1.12,
+			}),
+			...arrangeSection('Verse I', motif.steps),
+			...arrangeSection('Verse II', motif.steps, { transpose: 5 }),
+			...arrangeSection('Lift', motif.steps, {
+				transpose: 2,
+				reverse: true,
+				beatScale: 0.75,
+			}),
+			...arrangeSection('Chorus', motif.steps, {
+				transpose: 12,
+				beatScale: 0.75,
+				gateScale: 1.12,
+			}),
+			...arrangeSection('Break', motif.steps, {
+				transpose: -3,
+				reverse: true,
+				beatScale: 1.25,
+				gateScale: 1.18,
+			}),
+			...arrangeSection('Finale', motif.steps, {
+				transpose: 7,
+				beatScale: 0.75,
+				gateScale: 1.15,
+			}),
+			...arrangeSection('Outro', motif.steps, {
+				reverse: true,
+				beatScale: 1.5,
+				gateScale: 1.2,
+			}),
+		],
+	})),
+]
 
 const DEMO_NAMES = DEMO_PATTERNS.map((pattern) => pattern.name)
 
@@ -383,46 +380,210 @@ const KEYBOARD_SHORTCUTS: Record<string, number> = {
 	';': 64,
 }
 
+type PointerNoteHandle = {
+	id: string
+	isReleased: boolean
+	midi: number
+	noteVoices: VoiceHandle[]
+}
+
 export default function SynthLearningDevice({
 	isInteractive = true,
+	onPresentationStateChange,
+	presentationState,
 }: {
 	isInteractive?: boolean
+	onPresentationStateChange?: (state: SynthPresentationState) => void
+	presentationState?: SynthPresentationState
 }) {
 	const audioContextRef = useRef<AudioContext | null>(null)
 	const synthRef = useRef<SynthEngine | null>(null)
+	const synthInitializationRef = useRef<Promise<SynthEngine | null> | null>(null)
+	const isDisposedRef = useRef(false)
 	const activeVoicesRef = useRef<Map<string, VoiceHandle[]>>(new Map())
+	const heldNoteSourcesRef = useRef<Map<string, number>>(new Map())
 	const loopVoicesRef = useRef<VoiceHandle[]>([])
+	const loopChordVoicesRef = useRef<VoiceHandle[]>([])
+	const loopChordKeyRef = useRef('')
 	const [isReady, setIsReady] = useState(false)
 	const [audioError, setAudioError] = useState<string | null>(null)
 	const [pressedNotes, setPressedNotes] = useState<Set<number>>(new Set())
 	const [demoPressedNotes, setDemoPressedNotes] = useState<Set<number>>(
 		new Set(),
 	)
+	const [demoChordPressedNotes, setDemoChordPressedNotes] = useState<Set<number>>(
+		new Set(),
+	)
 	const [isLooping, setIsLooping] = useState(false)
-	const [selectedDemo, setSelectedDemo] = useState(DEMO_PATTERNS[0].name)
-	const [demoTempo, setDemoTempo] = useState(112)
+	const [selectedDemo, setSelectedDemo] = useState(
+		presentationState?.selectedDemo ?? DEMO_PATTERNS[0].name,
+	)
+	const [demoTempo, setDemoTempo] = useState(
+		presentationState?.demoTempo ?? REFERENCE_TEMPO,
+	)
 	const [currentDemoStep, setCurrentDemoStep] = useState('Ready')
 	const [focusedEnvelopeControl, setFocusedEnvelopeControl] = useState<
 		'attack' | 'decay' | 'sustain' | 'release' | null
 	>(null)
 
-	const [wave, setWave] = useState<OscillatorType>('sawtooth')
-	const [detune, setDetune] = useState(6)
-	const [attack, setAttack] = useState(0.02)
-	const [decay, setDecay] = useState(0.25)
-	const [sustain, setSustain] = useState(0.75)
-	const [release, setRelease] = useState(0.6)
-	const [cutoff, setCutoff] = useState(3200)
-	const [resonance, setResonance] = useState(0.8)
-	const [lfoEnabled, setLfoEnabled] = useState(false)
-	const [tremoloDepth, setTremoloDepth] = useState(0.3)
-	const [tremoloRate, setTremoloRate] = useState(5)
-	const [vibratoDepth, setVibratoDepth] = useState(0.25)
-	const [voices, setVoices] = useState(4)
-	const [voiceDetune, setVoiceDetune] = useState(10)
-	const [chorusMix, setChorusMix] = useState(0)
-	const [delayMix, setDelayMix] = useState(0)
-	const [reverbMix, setReverbMix] = useState(0)
+	const [wave, setWave] = useState<SynthWaveform>(
+		presentationState?.wave ?? REFERENCE_PATCH.wave,
+	)
+	const [detune, setDetune] = useState(
+		presentationState?.detune ?? REFERENCE_PATCH.detune,
+	)
+	const [attack, setAttack] = useState(
+		presentationState?.attack ?? REFERENCE_PATCH.attack,
+	)
+	const [decay, setDecay] = useState(
+		presentationState?.decay ?? REFERENCE_PATCH.decay,
+	)
+	const [sustain, setSustain] = useState(
+		presentationState?.sustain ?? REFERENCE_PATCH.sustain,
+	)
+	const [release, setRelease] = useState(
+		presentationState?.release ?? REFERENCE_PATCH.release,
+	)
+	const [cutoff, setCutoff] = useState(
+		presentationState?.cutoff ?? REFERENCE_PATCH.cutoff,
+	)
+	const [chordCutoff, setChordCutoff] = useState(
+		presentationState?.chordCutoff ?? REFERENCE_PATCH.chordCutoff,
+	)
+	const [resonance, setResonance] = useState(
+		presentationState?.resonance ?? REFERENCE_PATCH.resonance,
+	)
+	const [filterEnvelope, setFilterEnvelope] = useState(
+		presentationState?.filterEnvelope ?? REFERENCE_PATCH.filterEnvelope,
+	)
+	const [lfoEnabled, setLfoEnabled] = useState(
+		presentationState?.lfoEnabled ?? false,
+	)
+	const [tremoloDepth, setTremoloDepth] = useState(
+		presentationState?.tremoloDepth ?? 0.3,
+	)
+	const [tremoloRate, setTremoloRate] = useState(
+		presentationState?.tremoloRate ?? 5,
+	)
+	const [vibratoDepth, setVibratoDepth] = useState(
+		presentationState?.vibratoDepth ?? 0.25,
+	)
+	const [voices, setVoices] = useState(
+		presentationState?.voices ?? REFERENCE_PATCH.voices,
+	)
+	const [voiceDetune, setVoiceDetune] = useState(
+		presentationState?.voiceDetune ?? REFERENCE_PATCH.voiceDetune,
+	)
+	const [drive, setDrive] = useState(
+		presentationState?.drive ?? REFERENCE_PATCH.drive,
+	)
+	const [chorusMix, setChorusMix] = useState(
+		presentationState?.chorusMix ?? REFERENCE_PATCH.chorusMix,
+	)
+	const [delayMix, setDelayMix] = useState(
+		presentationState?.delayMix ?? REFERENCE_PATCH.delayMix,
+	)
+	const [reverbMix, setReverbMix] = useState(
+		presentationState?.reverbMix ?? REFERENCE_PATCH.reverbMix,
+	)
+
+	useEffect(() => {
+		if (isInteractive || !presentationState) return
+
+		setWave(presentationState.wave)
+		setDetune(presentationState.detune)
+		setAttack(presentationState.attack)
+		setDecay(presentationState.decay)
+		setSustain(presentationState.sustain)
+		setRelease(presentationState.release)
+		setCutoff(presentationState.cutoff)
+		setChordCutoff(presentationState.chordCutoff)
+		setResonance(presentationState.resonance)
+		setFilterEnvelope(presentationState.filterEnvelope)
+		setLfoEnabled(presentationState.lfoEnabled)
+		setTremoloDepth(presentationState.tremoloDepth)
+		setTremoloRate(presentationState.tremoloRate)
+		setVibratoDepth(presentationState.vibratoDepth)
+		setVoices(presentationState.voices)
+		setVoiceDetune(presentationState.voiceDetune)
+		setDrive(presentationState.drive)
+		setChorusMix(presentationState.chorusMix)
+		setDelayMix(presentationState.delayMix)
+		setReverbMix(presentationState.reverbMix)
+		setSelectedDemo(presentationState.selectedDemo)
+		setDemoTempo(presentationState.demoTempo)
+		setIsLooping(presentationState.isLooping)
+		setCurrentDemoStep(presentationState.currentDemoStep)
+		setIsReady(presentationState.isPowered)
+	}, [isInteractive, presentationState])
+
+	useEffect(() => {
+		if (!isInteractive || !onPresentationStateChange) return
+
+		onPresentationStateChange({
+			wave,
+			detune,
+			attack,
+			decay,
+			sustain,
+			release,
+			cutoff,
+			chordCutoff,
+			resonance,
+			filterEnvelope,
+			lfoEnabled,
+			tremoloDepth,
+			tremoloRate,
+			vibratoDepth,
+			voices,
+			voiceDetune,
+			drive,
+			chorusMix,
+			delayMix,
+			reverbMix,
+			selectedDemo,
+			demoTempo,
+			isLooping,
+			currentDemoStep,
+			isPowered: isReady,
+			pressedMidi: Array.from(new Set([
+				...pressedNotes,
+				...demoPressedNotes,
+				...demoChordPressedNotes,
+			])).sort((left, right) => left - right),
+		})
+	}, [
+		attack,
+		chordCutoff,
+		chorusMix,
+		currentDemoStep,
+		cutoff,
+		decay,
+		delayMix,
+		demoChordPressedNotes,
+		demoPressedNotes,
+		demoTempo,
+		detune,
+		drive,
+		filterEnvelope,
+		isInteractive,
+		isLooping,
+		isReady,
+		lfoEnabled,
+		onPresentationStateChange,
+		pressedNotes,
+		release,
+		resonance,
+		reverbMix,
+		selectedDemo,
+		sustain,
+		tremoloDepth,
+		tremoloRate,
+		vibratoDepth,
+		voiceDetune,
+		voices,
+		wave,
+	])
 
 	useEffect(() => {
 		if (!DEMO_NAMES.includes(selectedDemo)) {
@@ -430,53 +591,39 @@ export default function SynthLearningDevice({
 		}
 	}, [selectedDemo])
 
-	const ensureSynth = useCallback(async () => {
-		if (!isInteractive) return null
-		if (synthRef.current) {
-			if (audioContextRef.current?.state === 'suspended') {
-				await audioContextRef.current.resume()
-			}
-			return synthRef.current
-		}
-
-		const AudioCtx =
-			window.AudioContext ||
-			(window as typeof window & { webkitAudioContext: typeof AudioContext })
-				.webkitAudioContext
-		if (!AudioCtx) {
-			setAudioError('Audio unavailable')
-			return null
-		}
-		const context = new AudioCtx({ latencyHint: 'interactive' })
-		if (context.state === 'suspended') await context.resume()
-
-		const synth = new SynthEngine(context)
-		audioContextRef.current = context
-		synthRef.current = synth
-		setIsReady(true)
-		return synth
-	}, [isInteractive])
-
-	useEffect(() => {
-		const synth = synthRef.current
-		if (!synth) return
-		synth.setWave(wave)
-		synth.setDetuneSpread(detune + voiceDetune)
-		synth.setVoices(voices)
+	const applyControlsToSynth = useCallback((synth: SynthEngine) => {
+		synth.setWave(wave, 'notes')
+		synth.setWave(REFERENCE_PATCH.chordWave, 'chords')
+		synth.setDetuneSpread(detune + voiceDetune, 'notes')
+		synth.setDetuneSpread(REFERENCE_PATCH.chordVoiceDetune, 'chords')
+		synth.setVoices(voices, 'notes')
+		synth.setVoices(REFERENCE_PATCH.chordVoices, 'chords')
+		synth.setStereoWidth(REFERENCE_PATCH.stereoWidth, 'notes')
+		synth.setStereoWidth(REFERENCE_PATCH.chordStereoWidth, 'chords')
+		synth.setDrive(drive)
 		synth.setAttack(attack)
 		synth.params.env.decay = decay
 		synth.params.env.sustain = sustain
 		synth.setRelease(release)
+		synth.setChordEnvelope({
+			attack: REFERENCE_PATCH.chordAttack,
+			decay: REFERENCE_PATCH.chordDecay,
+			sustain: REFERENCE_PATCH.chordSustain,
+			release: REFERENCE_PATCH.chordRelease,
+		})
 		synth.setFilterCutoff(cutoff, 'notes')
-		synth.setFilterCutoff(cutoff, 'chords')
+		synth.setFilterCutoff(chordCutoff, 'chords')
 		synth.setFilterQ(resonance, 'notes')
-		synth.setFilterQ(resonance, 'chords')
+		synth.setFilterQ(REFERENCE_PATCH.chordResonance, 'chords')
+		synth.setFilterEnvelope(filterEnvelope, REFERENCE_PATCH.filterDecay)
 		synth.params.fx.tremoloRate = tremoloRate
 		synth.setMacroA(
 			lfoEnabled ? tremoloDepth : 0,
 			lfoEnabled ? vibratoDepth : 0,
 		)
 		synth.params.fx.chorusOn = chorusMix > 0
+		synth.params.fx.chorusRate = REFERENCE_PATCH.chorusRate
+		synth.params.fx.chorusDepthMs = REFERENCE_PATCH.chorusDepthMs
 		synth.params.fx.chorusMix = chorusMix
 		synth.params.fx.delayOn = delayMix > 0
 		synth.params.fx.delayMix = delayMix
@@ -485,12 +632,14 @@ export default function SynthLearningDevice({
 		synth.applyParams()
 	}, [
 		attack,
+		chordCutoff,
 		chorusMix,
 		cutoff,
 		decay,
 		delayMix,
 		detune,
-		isReady,
+		drive,
+		filterEnvelope,
 		lfoEnabled,
 		release,
 		reverbMix,
@@ -504,41 +653,131 @@ export default function SynthLearningDevice({
 		wave,
 	])
 
+	const ensureSynth = useCallback((): Promise<SynthEngine | null> => {
+		if (!isInteractive) return Promise.resolve(null)
+		if (synthRef.current) {
+			return (async () => {
+				if (audioContextRef.current?.state === 'suspended') {
+					await audioContextRef.current.resume()
+				}
+				return isDisposedRef.current ? null : synthRef.current
+			})()
+		}
+
+		if (synthInitializationRef.current) {
+			return synthInitializationRef.current
+		}
+
+		const initialization = (async () => {
+			const AudioCtx =
+				window.AudioContext ||
+				(window as typeof window & {
+					webkitAudioContext: typeof AudioContext
+				}).webkitAudioContext
+			if (!AudioCtx) {
+				setAudioError('Audio unavailable')
+				return null
+			}
+			const context = new AudioCtx({ latencyHint: 'interactive' })
+			if (context.state === 'suspended') await context.resume()
+
+			if (isDisposedRef.current) {
+				await context.close()
+				return null
+			}
+
+			const synth = new SynthEngine(context)
+			applyControlsToSynth(synth)
+			audioContextRef.current = context
+			synthRef.current = synth
+			setIsReady(true)
+			return synth
+		})()
+		synthInitializationRef.current = initialization
+		void initialization.then(
+			() => {
+				if (synthInitializationRef.current === initialization) {
+					synthInitializationRef.current = null
+				}
+			},
+			() => {
+				if (synthInitializationRef.current === initialization) {
+					synthInitializationRef.current = null
+				}
+			},
+		)
+		return initialization
+	}, [applyControlsToSynth, isInteractive])
+
+	useEffect(() => {
+		const synth = synthRef.current
+		if (!synth) return
+		applyControlsToSynth(synth)
+	}, [applyControlsToSynth])
+
+	const holdNoteSource = useCallback((id: string, midi: number) => {
+		if (heldNoteSourcesRef.current.has(id)) return false
+		heldNoteSourcesRef.current.set(id, midi)
+		setPressedNotes(new Set(heldNoteSourcesRef.current.values()))
+		return true
+	}, [])
+
+	const releaseNoteSource = useCallback((id: string) => {
+		if (!heldNoteSourcesRef.current.delete(id)) return
+		setPressedNotes(new Set(heldNoteSourcesRef.current.values()))
+	}, [])
+
 	const startNote = useCallback(
 		async (midi: number, id = `pointer-${midi}`) => {
-			if (activeVoicesRef.current.has(id)) return
+			if (!holdNoteSource(id, midi)) return
 			const synth = await ensureSynth()
-			if (!synth) return
+			if (!synth || heldNoteSourcesRef.current.get(id) !== midi) return
 			const noteVoices = synth.noteOn([toFreq(midi)], 'notes')
 			activeVoicesRef.current.set(id, noteVoices)
-			setPressedNotes((current) => new Set(current).add(midi))
 		},
-		[ensureSynth],
+		[ensureSynth, holdNoteSource],
 	)
 
 	const stopNote = useCallback((midi: number, id = `pointer-${midi}`) => {
+		releaseNoteSource(id)
 		const noteVoices = activeVoicesRef.current.get(id)
 		if (!noteVoices) return
 		synthRef.current?.noteOff(noteVoices)
 		activeVoicesRef.current.delete(id)
-		setPressedNotes((current) => {
-			const next = new Set(current)
-			next.delete(midi)
-			return next
-		})
-	}, [])
+	}, [releaseNoteSource])
 
 	const startPointerNote = useCallback(
-		async (midi: number): Promise<VoiceHandle[]> => {
-			const synth = await ensureSynth()
-			return synth?.noteOn([toFreq(midi)], 'notes') ?? []
+		async (midi: number): Promise<PointerNoteHandle> => {
+			const id = `pointer-${midi}`
+			const handle: PointerNoteHandle = {
+				id,
+				isReleased: false,
+				midi,
+				noteVoices: [],
+			}
+
+			if (holdNoteSource(id, midi)) {
+				void ensureSynth().then((synth) => {
+					if (
+						synth &&
+						!handle.isReleased &&
+						heldNoteSourcesRef.current.get(id) === midi
+					) {
+						handle.noteVoices = synth.noteOn([toFreq(midi)], 'notes')
+					}
+				})
+			}
+
+			return handle
 		},
-		[ensureSynth],
+		[ensureSynth, holdNoteSource],
 	)
 
-	const stopPointerNote = useCallback((noteVoices: VoiceHandle[]) => {
-		synthRef.current?.noteOff(noteVoices)
-	}, [])
+	const stopPointerNote = useCallback((handle: PointerNoteHandle) => {
+		handle.isReleased = true
+		releaseNoteSource(handle.id)
+		synthRef.current?.noteOff(handle.noteVoices)
+	}, [releaseNoteSource])
 
 	useEffect(() => {
 		if (!isInteractive) return
@@ -550,6 +789,7 @@ export default function SynthLearningDevice({
 				isSynthShortcutTypingTarget({
 					inputMode: target instanceof HTMLInputElement ? target.inputMode : undefined,
 					isContentEditable: target.isContentEditable,
+					readOnly: target instanceof HTMLInputElement ? target.readOnly : undefined,
 					tagName: target.tagName,
 					type: target instanceof HTMLInputElement ? target.type : undefined,
 				})
@@ -569,16 +809,31 @@ export default function SynthLearningDevice({
 			event.stopPropagation()
 			stopNote(midi, `keyboard-${shortcut}`)
 		}
+		const releaseKeyboardNotes = () => {
+			for (const [shortcut, midi] of Object.entries(KEYBOARD_SHORTCUTS)) {
+				stopNote(midi, `keyboard-${shortcut}`)
+			}
+		}
+		const onVisibilityChange = () => {
+			if (document.visibilityState === 'hidden') {
+				releaseKeyboardNotes()
+			}
+		}
 		document.addEventListener('keydown', onKeyDown, true)
 		document.addEventListener('keyup', onKeyUp, true)
+		document.addEventListener('visibilitychange', onVisibilityChange)
+		window.addEventListener('blur', releaseKeyboardNotes)
 		return () => {
 			document.removeEventListener('keydown', onKeyDown, true)
 			document.removeEventListener('keyup', onKeyUp, true)
+			document.removeEventListener('visibilitychange', onVisibilityChange)
+			window.removeEventListener('blur', releaseKeyboardNotes)
 		}
 	}, [isInteractive, startNote, stopNote])
 
 	useEffect(() => {
 		if (!isInteractive || !isLooping || !synthRef.current) return
+		const synth = synthRef.current
 		const pattern =
 			DEMO_PATTERNS.find((candidate) => candidate.name === selectedDemo) ??
 			DEMO_PATTERNS[0]
@@ -586,6 +841,24 @@ export default function SynthLearningDevice({
 		let stepIndex = 0
 		let nextStepTimer: number | undefined
 		let releaseTimer: number | undefined
+		let chordChangeTimer: number | undefined
+
+		const changeChord = (notes: number[]) => {
+			const chordKey = notes.join(',')
+			if (chordKey === loopChordKeyRef.current) return
+
+			if (loopChordVoicesRef.current.length) {
+				synthRef.current?.noteOff(loopChordVoicesRef.current)
+			}
+
+			loopChordKeyRef.current = chordKey
+			loopChordVoicesRef.current = notes.length
+				? synth.noteOn(notes.map(toFreq), 'chords', 0.54)
+				: []
+			setDemoChordPressedNotes(
+				new Set(notes.filter((midi) => midi >= 48 && midi <= 71)),
+			)
+		}
 
 		const playStep = () => {
 			const synth = synthRef.current
@@ -602,10 +875,21 @@ export default function SynthLearningDevice({
 			)
 			window.clearTimeout(releaseTimer)
 
+			if (step.chordNotes) changeChord(step.chordNotes)
+			if (step.delayedChordChange) {
+				window.clearTimeout(chordChangeTimer)
+				const delayedChordChange = step.delayedChordChange
+				chordChangeTimer = window.setTimeout(
+					() => changeChord(delayedChordChange.notes),
+					beatDuration * delayedChordChange.afterBeats,
+				)
+			}
+
 			if (step.notes.length) {
 				const stepVoices = synth.noteOn(
 					step.notes.map(toFreq),
-					step.notes.length > 1 ? 'chords' : 'notes',
+					'notes',
+					step.velocity ?? 1,
 				)
 				loopVoicesRef.current = stepVoices
 				releaseTimer = window.setTimeout(
@@ -622,6 +906,15 @@ export default function SynthLearningDevice({
 				loopVoicesRef.current = []
 			}
 
+			const isLastStep = stepIndex === pattern.steps.length - 1
+			if (isLastStep && pattern.playOnce) {
+				nextStepTimer = window.setTimeout(
+					() => setIsLooping(false),
+					stepDuration,
+				)
+				return
+			}
+
 			stepIndex = (stepIndex + 1) % pattern.steps.length
 			nextStepTimer = window.setTimeout(playStep, stepDuration)
 		}
@@ -630,16 +923,25 @@ export default function SynthLearningDevice({
 		return () => {
 			window.clearTimeout(nextStepTimer)
 			window.clearTimeout(releaseTimer)
+			window.clearTimeout(chordChangeTimer)
 			setDemoPressedNotes(new Set())
+			setDemoChordPressedNotes(new Set())
 			if (loopVoicesRef.current.length) {
 				synthRef.current?.noteOff(loopVoicesRef.current)
 				loopVoicesRef.current = []
 			}
+			if (loopChordVoicesRef.current.length) {
+				synthRef.current?.noteOff(loopChordVoicesRef.current)
+				loopChordVoicesRef.current = []
+			}
+			loopChordKeyRef.current = ''
 		}
 	}, [demoTempo, isInteractive, isLooping, selectedDemo])
 
 	useEffect(() => {
+		isDisposedRef.current = false
 		return () => {
+			isDisposedRef.current = true
 			activeVoicesRef.current.forEach((noteVoices) =>
 				synthRef.current?.noteOff(noteVoices),
 			)
@@ -654,7 +956,12 @@ export default function SynthLearningDevice({
 		setIsLooping((current) => !current)
 	}
 
-	const displayedPressedNotes = new Set([...pressedNotes, ...demoPressedNotes])
+	const displayedPressedNotes = new Set([
+		...pressedNotes,
+		...demoPressedNotes,
+		...demoChordPressedNotes,
+		...(!isInteractive ? (presentationState?.pressedMidi ?? []) : []),
+	])
 
 	return (
 		<DeviceProvider>
@@ -734,14 +1041,21 @@ export default function SynthLearningDevice({
 							<div className="pointer-events-auto grid grid-cols-6 grid-rows-2 gap-2 p-2">
 								<ControlPanel
 									title="Oscillator"
-									description="Choose the core wave and its pitch spread."
+									description="Choose the lead wave and its pitch spread."
 									className="col-span-2"
 								>
-									<LabeledControl label="Wave shape">
+									<LabeledControl label="Lead wave shape">
 										<Select
 											value={wave}
-											onChange={(value) => setWave(value as OscillatorType)}
-											options={['sine', 'triangle', 'sawtooth', 'square']}
+											onChange={(value) => setWave(value as SynthWaveform)}
+											options={[
+												'soft-square',
+												'tape-stack',
+												'sine',
+												'triangle',
+												'sawtooth',
+												'square',
+											]}
 											className="w-full"
 										/>
 									</LabeledControl>
@@ -753,30 +1067,40 @@ export default function SynthLearningDevice({
 										max={18}
 										step={0.5}
 									/>
+									<LabeledSlider
+										label={`Drive · ${(drive * 100).toFixed(0)}%`}
+										value={drive}
+										onChange={setDrive}
+										min={0}
+										max={1}
+										step={0.01}
+									/>
 								</ControlPanel>
 
 								<ControlPanel
 									title="Envelope · ADSR"
-									description="Shape how every note begins, holds, and fades."
+									description="Shape how each lead note begins, holds, and fades."
 									className="col-span-2"
 								>
 									<div className="grid grid-cols-2 gap-3">
-										<DeviceTimeControl
-											label="Attack"
-											value={attack}
-											unit="ms"
-											updateField={setAttack}
-											sensitivity={0.005}
+											<DeviceTimeControl
+												label="Attack"
+												value={attack}
+												unit="ms"
+												updateField={setAttack}
+												sensitivity={0.005}
+												max={60}
 											onFocus={() => setFocusedEnvelopeControl('attack')}
 											onBlur={() => setFocusedEnvelopeControl(null)}
 											isFocused={focusedEnvelopeControl === 'attack'}
 										/>
-										<DeviceTimeControl
-											label="Decay"
-											value={decay}
-											unit="ms"
-											updateField={setDecay}
-											sensitivity={0.005}
+											<DeviceTimeControl
+												label="Decay"
+												value={decay}
+												unit="ms"
+												updateField={setDecay}
+												sensitivity={0.005}
+												max={60}
 											onFocus={() => setFocusedEnvelopeControl('decay')}
 											onBlur={() => setFocusedEnvelopeControl(null)}
 											isFocused={focusedEnvelopeControl === 'decay'}
@@ -789,12 +1113,13 @@ export default function SynthLearningDevice({
 											onBlur={() => setFocusedEnvelopeControl(null)}
 											isFocused={focusedEnvelopeControl === 'sustain'}
 										/>
-										<DeviceTimeControl
-											label="Release"
-											value={release}
-											unit="ms"
-											updateField={setRelease}
-											sensitivity={0.005}
+											<DeviceTimeControl
+												label="Release"
+												value={release}
+												unit="ms"
+												updateField={setRelease}
+												sensitivity={0.005}
+												max={60}
 											onFocus={() => setFocusedEnvelopeControl('release')}
 											onBlur={() => setFocusedEnvelopeControl(null)}
 											isFocused={focusedEnvelopeControl === 'release'}
@@ -804,25 +1129,43 @@ export default function SynthLearningDevice({
 
 								<ControlPanel
 									title="Filter"
-									description="Sculpt brightness with a low-pass filter."
+									description="Shape lead presence and chord warmth independently."
 									className="col-span-2"
 								>
-									<LabeledSlider
-										label={`Cutoff · ${Math.round(cutoff)} Hz`}
-										value={cutoff}
-										onChange={setCutoff}
-										min={200}
-										max={8000}
-										step={25}
-									/>
-									<LabeledSlider
-										label={`Resonance · ${resonance.toFixed(2)}`}
-										value={resonance}
-										onChange={setResonance}
-										min={0.3}
-										max={8}
-										step={0.05}
-									/>
+									<div className="grid grid-cols-2 gap-x-3 gap-y-2">
+										<LabeledSlider
+											label={`Lead cutoff · ${Math.round(cutoff)} Hz`}
+											value={cutoff}
+											onChange={setCutoff}
+											min={200}
+											max={8000}
+											step={25}
+										/>
+										<LabeledSlider
+											label={`Chord cutoff · ${Math.round(chordCutoff)} Hz`}
+											value={chordCutoff}
+											onChange={setChordCutoff}
+											min={300}
+											max={4000}
+											step={25}
+										/>
+										<LabeledSlider
+											label={`Resonance · ${resonance.toFixed(2)}`}
+											value={resonance}
+											onChange={setResonance}
+											min={0.3}
+											max={8}
+											step={0.05}
+										/>
+										<LabeledSlider
+											label={`Lead envelope · ${(filterEnvelope * 100).toFixed(0)}%`}
+											value={filterEnvelope}
+											onChange={setFilterEnvelope}
+											min={0}
+											max={1}
+											step={0.01}
+										/>
+									</div>
 								</ControlPanel>
 
 								<ControlPanel

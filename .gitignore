@@ -3,3 +3,4 @@ node_modules/
 .DS_Store
 /dist
 /.tmp
+/src/slides/19-exposure-practice/fish.mp4

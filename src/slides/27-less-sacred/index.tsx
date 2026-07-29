@@ -206,7 +206,7 @@ export function LessSacredGangPromptSlide({
     >
       <img
         alt="Dax describing collaborative gangprompting with AI"
-        className="language-tweet-slide__image"
+        className="gangprompting-tweet-slide__image"
         draggable={false}
         src={gangPromptUrl}
       />

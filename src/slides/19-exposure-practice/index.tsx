@@ -18,6 +18,10 @@ import releaseUrl from "./release.svg";
 import soundfallVideoUrl from "./soundfall.webm";
 import { exposureCollectionImages } from "./collection";
 import {
+  getMasonryColumnScrollDurations,
+  partitionBalancedMasonryColumns,
+} from "./collection-layout";
+import {
   acquireSkyRemembersScore,
   releaseSkyRemembersScore,
 } from "./sky-remembers-score";
@@ -592,6 +596,7 @@ export function ExposurePracticeMyMindSlide({
 }
 
 const collectionPreviewImageCount = 12;
+const collectionColumnCount = 4;
 const collectionTrackCopies = [0, 1] as const;
 const collectionScrollDurationMs = 180_000;
 const collectionScrollSpeed = 4;
@@ -613,9 +618,13 @@ export function ExposurePracticeCollectionSlide({
     : exposureCollectionImages.slice(0, collectionPreviewImageCount);
   const copies = isAnimated ? collectionTrackCopies : collectionTrackCopies.slice(0, 1);
   const elapsedMs = Math.max(0, Date.now() - effectiveScrollState.startedAt);
+  const columns = partitionBalancedMasonryColumns(images, collectionColumnCount);
+  const columnScrollDurations = getMasonryColumnScrollDurations(
+    columns,
+    collectionScrollDurationMs / effectiveScrollState.speed,
+  );
   const collectionStyle = {
     "--exposure-collection-scroll-delay": `${-elapsedMs}ms`,
-    "--exposure-collection-scroll-duration": `${collectionScrollDurationMs / effectiveScrollState.speed}ms`,
   } as CSSProperties;
 
   useEffect(() => {
@@ -635,29 +644,45 @@ export function ExposurePracticeCollectionSlide({
       style={collectionStyle}
     >
       <div aria-hidden="true" className="exposure-practice-collection__viewport">
-        <div className="exposure-practice-collection__track">
-          {copies.map((copyIndex) => (
-            <div className="exposure-practice-collection__grid" key={copyIndex}>
-              {images.map((image) => (
+        {columns.map((column, columnIndex) => (
+          <div
+            className="exposure-practice-collection__column"
+            key={column[0]?.src ?? columnIndex}
+          >
+            <div
+              className="exposure-practice-collection__column-track"
+              style={{
+                "--exposure-collection-scroll-duration":
+                  `${columnScrollDurations[columnIndex]}ms`,
+              } as CSSProperties}
+            >
+              {copies.map((copyIndex) => (
                 <div
-                  className="exposure-practice-collection__item"
-                  key={`${copyIndex}-${image.src}`}
+                  className="exposure-practice-collection__column-sequence"
+                  key={copyIndex}
                 >
-                  <img
-                    alt=""
-                    className="exposure-practice-collection__image"
-                    decoding="async"
-                    draggable={false}
-                    height={image.height}
-                    loading={loadImagesEagerly ? "eager" : "lazy"}
-                    src={image.src}
-                    width={image.width}
-                  />
+                  {column.map((image) => (
+                    <div
+                      className="exposure-practice-collection__item"
+                      key={`${copyIndex}-${image.src}`}
+                    >
+                      <img
+                        alt=""
+                        className="exposure-practice-collection__image"
+                        decoding="async"
+                        draggable={false}
+                        height={image.height}
+                        loading={loadImagesEagerly ? "eager" : "lazy"}
+                        src={image.src}
+                        width={image.width}
+                      />
+                    </div>
+                  ))}
                 </div>
               ))}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );

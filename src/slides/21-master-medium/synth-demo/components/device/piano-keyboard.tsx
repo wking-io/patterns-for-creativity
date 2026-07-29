@@ -99,6 +99,8 @@ function PianoKey<TVoice>({
 				'group pointer-events-auto mr-1 flex flex-1 cursor-pointer flex-col last:mr-0',
 				isPressed ? 'translate-y-4' : 'translate-y-0',
 			)}
+			data-midi={midi}
+			data-pressed={isPressed ? 'true' : 'false'}
 			onPointerDown={handlePointerDown}
 			onPointerUp={handlePointerUp}
 			onPointerLeave={handlePointerUp}
@@ -168,6 +170,8 @@ function PianoBlackKey<TVoice>({
 		<div
 			className="pointer-events-auto relative z-30 h-2/3 w-0 cursor-pointer"
 			aria-label={`Play MIDI note ${midi}`}
+			data-midi={midi}
+			data-pressed={isPressed ? 'true' : 'false'}
 		>
 			<div
 				className="absolute top-0 h-[calc(100%+4px)] w-10 -translate-x-[22px] rounded-b-sm bg-stone-950 transition-colors"

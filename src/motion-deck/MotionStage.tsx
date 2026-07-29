@@ -1,4 +1,4 @@
-import { memo, useId, useState } from "react";
+import { memo, useCallback, useId, useState } from "react";
 import { LayoutGroup, motion } from "motion/react";
 import type { Transition, Variants } from "motion/react";
 import { TitleSlide } from "../slides/00-title";
@@ -83,6 +83,7 @@ import thinkGraffitiUrl from "../slides/01-think/think-graffiti.svg";
 import thinkUrl from "../slides/01-think/think.svg";
 import { SlideGridOverlay, SlideTextureOverlay, TitleSlideFooter } from "../slides/SlideFrame";
 import type { MotionDeckFrame } from "./frames";
+import type { SynthPresentationState } from "../slides/21-master-medium/synth-demo/presentation-state";
 import { createDefaultTileRevealState } from "./presentation-sync";
 import type {
   ExposureMaskStep,
@@ -136,9 +137,12 @@ function MotionStageComponent({
     columns: frame.tileRevealColumns ?? defaultTileRevealState.columns,
     removedTileIds: [],
   };
-  const reportPointer = (pointer?: PresentationPointerPosition) => {
+  const reportPointer = useCallback((pointer?: PresentationPointerPosition) => {
     onInteractionState?.({ frameId: frame.id, pointer });
-  };
+  }, [frame.id, onInteractionState]);
+  const reportSynthState = useCallback((synth: SynthPresentationState) => {
+    onInteractionState?.({ frameId: frame.id, synth });
+  }, [frame.id, onInteractionState]);
   const reportExposureMaskInteraction = (
     pointer: PresentationPointerPosition | undefined,
     exposureMaskStep: ExposureMaskStep,
@@ -497,6 +501,9 @@ function MotionStageComponent({
           <SynthDemoSlide
             className="slide-content"
             isInteractive={isInteractiveMode}
+            onPointerChange={reportPointer}
+            onPresentationStateChange={reportSynthState}
+            presentationState={currentInteractionState?.synth}
           />
         ) : isLanguageIndexFrame ? (
           <LanguageIndexSlide className="slide-content" />

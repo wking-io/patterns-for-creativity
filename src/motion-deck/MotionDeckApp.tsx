@@ -6,6 +6,7 @@ import { PresenterView } from "./PresenterView";
 import {
   createDefaultTileRevealState,
   getDeckViewMode,
+  mergePresentationInteractionState,
 } from "./presentation-sync";
 import type {
   PortalMaskRect,
@@ -41,6 +42,7 @@ export function MotionDeckApp() {
   );
   const [portalMaskRect, setPortalMaskRect] = useState<PortalMaskRect>();
   const [interactionState, setInteractionState] = useState<PresentationInteractionState>();
+  const interactionStateRef = useRef<PresentationInteractionState>(undefined);
   const touchStartRef = useRef<{ x: number; y: number } | undefined>(undefined);
   const frame = motionDeckFrames[frameIndex] ?? motionDeckFrames[0];
   const tileRevealState = tileRevealStates[frame.id];
@@ -86,6 +88,7 @@ export function MotionDeckApp() {
   }, []);
 
   const applyAudienceInteractionState = useCallback((message: PresentationInteractionMessage) => {
+    interactionStateRef.current = message.state;
     setInteractionState(message.state);
   }, []);
 
@@ -127,8 +130,13 @@ export function MotionDeckApp() {
   }, [broadcastPortalMaskRect]);
 
   const handleInteractionState = useCallback((state: PresentationInteractionState) => {
-    setInteractionState(state);
-    broadcastInteractionState(state);
+    const nextState = mergePresentationInteractionState(
+      interactionStateRef.current,
+      state,
+    );
+    interactionStateRef.current = nextState;
+    setInteractionState(nextState);
+    broadcastInteractionState(nextState);
   }, [broadcastInteractionState]);
 
   const controls = useMemo(() => ({
@@ -250,6 +258,7 @@ export function MotionDeckApp() {
           isGridVisible={isGridVisible}
           onNext={controls.goNext}
           onOpenAudience={openAudienceDisplay}
+          onPrevious={controls.goPrevious}
           onInteractionState={handleInteractionState}
           onPortalMaskRect={handlePortalMaskRect}
           onTileRevealState={handleTileRevealState}

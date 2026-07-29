@@ -33,7 +33,7 @@ export default function Select({
 			<input
 				className="border-foreground bg-layer font-code text-foreground focus:outline-brand-green h-6 flex-1 border-x-0 border-t border-b text-center text-xs font-extralight tabular-nums focus:z-1 focus:outline focus:-outline-offset-1"
 				value={value}
-				onChange={(e) => onChange(e.target.value)}
+				readOnly
 			/>
 			<button
 				onClick={nextOption}

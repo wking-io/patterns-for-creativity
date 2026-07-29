@@ -20,6 +20,7 @@ import {
   deliverPresentationMessage,
   getDeckViewMode,
   getInitialAudienceBlackout,
+  mergePresentationInteractionState,
   parsePresentationMessage,
   reduceAudienceConnection,
 } from "../src/motion-deck/presentation-sync.js";
@@ -465,6 +466,96 @@ assert.equal(
   }, 29),
   undefined,
   "collection scroll speeds must stay within the control range",
+);
+const synthInteractionState = {
+  frameId: "synth-demo",
+  pointer: { x: 0.4, y: 0.6 },
+  synth: {
+    wave: "sawtooth" as const,
+    detune: 6,
+    attack: 0.02,
+    decay: 0.25,
+    sustain: 0.75,
+    release: 0.6,
+    cutoff: 3200,
+    chordCutoff: 1250,
+    resonance: 0.8,
+    filterEnvelope: 0.07,
+    lfoEnabled: true,
+    tremoloDepth: 0.3,
+    tremoloRate: 5,
+    vibratoDepth: 0.25,
+    voices: 4,
+    voiceDetune: 10,
+    drive: 0.12,
+    chorusMix: 0.2,
+    delayMix: 0.1,
+    reverbMix: 0.3,
+    selectedDemo: "Tape Bloom",
+    demoTempo: 112,
+    isLooping: true,
+    currentDemoStep: "E major · B4",
+    isPowered: true,
+    pressedMidi: [48, 52, 55],
+  },
+};
+const synthInteractionMessage = createPresentationInteractionMessage(
+  "presenter-a",
+  1,
+  synthInteractionState,
+);
+assert.deepEqual(
+  parsePresentationMessage(synthInteractionMessage, 100),
+  synthInteractionMessage,
+  "synth controls, keys, and pointer survive the presentation wire together",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...synthInteractionMessage,
+    state: {
+      ...synthInteractionState,
+      synth: { ...synthInteractionState.synth, wave: "invalid-wave" },
+    },
+  }, 100),
+  undefined,
+  "unknown synth waveforms are rejected",
+);
+assert.equal(
+  parsePresentationMessage({
+    ...synthInteractionMessage,
+    state: {
+      ...synthInteractionState,
+      synth: { ...synthInteractionState.synth, pressedMidi: [48, 48] },
+    },
+  }, 100),
+  undefined,
+  "duplicate pressed synth keys are rejected",
+);
+const movedSynthPointerState = mergePresentationInteractionState(
+  synthInteractionState,
+  {
+    frameId: "synth-demo",
+    pointer: { x: 0.7, y: 0.2 },
+  },
+);
+assert.deepEqual(
+  movedSynthPointerState,
+  {
+    ...synthInteractionState,
+    pointer: { x: 0.7, y: 0.2 },
+  },
+  "moving the fake mouse does not erase the synth controls or keys",
+);
+assert.deepEqual(
+  mergePresentationInteractionState(movedSynthPointerState, {
+    frameId: "synth-demo",
+    synth: { ...synthInteractionState.synth, cutoff: 8000 },
+  }),
+  {
+    ...movedSynthPointerState,
+    synth: { ...synthInteractionState.synth, cutoff: 8000 },
+  },
+  "changing a synth control does not erase the fake mouse",
 );
 let interactionCursor = createPresentationInteractionCursor();
 let interactionResult = acceptPresentationInteractionState(

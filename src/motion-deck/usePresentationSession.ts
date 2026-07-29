@@ -78,6 +78,7 @@ export function usePresentationSession({
   const popupRef = useRef<Window | undefined>(undefined);
   const presenterSessionIdRef = useRef(createPeerId("presenter"));
   const audienceIdRef = useRef(createPeerId("audience"));
+  const syncedAudienceIdRef = useRef<string | undefined>(undefined);
   const revisionRef = useRef(0);
   const tileRevealRevisionRef = useRef(0);
   const portalMaskRevisionRef = useRef(0);
@@ -144,7 +145,11 @@ export function usePresentationSession({
           at: Date.now(),
         });
 
-        if (message.type === "audience-ready") {
+        if (
+          message.type === "audience-ready" ||
+          syncedAudienceIdRef.current === undefined
+        ) {
+          syncedAudienceIdRef.current = message.audienceId;
           sendMessage(latestStateRef.current);
           const tileRevealSnapshot = tileRevealSnapshotRef.current;
           if (tileRevealSnapshot) {
@@ -171,6 +176,9 @@ export function usePresentationSession({
           }
         }
       } else if (message.type === "audience-closing") {
+        if (syncedAudienceIdRef.current === message.audienceId) {
+          syncedAudienceIdRef.current = undefined;
+        }
         updateAudienceConnection({
           type: "audience-closing",
           audienceId: message.audienceId,

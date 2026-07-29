@@ -8,6 +8,8 @@ import {
   tileRevealMinRows,
 } from "../slides/26-optimize-for-exploration/tile-recording.js";
 import type { TileRecording } from "../slides/26-optimize-for-exploration/tile-recording.js";
+import { isSynthPresentationState } from "../slides/21-master-medium/synth-demo/presentation-state.js";
+import type { SynthPresentationState } from "../slides/21-master-medium/synth-demo/presentation-state.js";
 
 export const presentationChannelName = "patterns-for-creativity-presentation";
 export const presentationMessageVersion = 1;
@@ -83,6 +85,7 @@ export type PresentationCollectionScrollState = {
 export type PresentationInteractionState = {
   frameId: string;
   pointer?: PresentationPointerPosition;
+  synth?: SynthPresentationState;
   exposureCollectionScroll?: PresentationCollectionScrollState;
   exposureMaskStep?: ExposureMaskStep;
   exposureScoreId?: string;
@@ -251,7 +254,29 @@ export function createPresentationInteractionMessage(
     version: presentationMessageVersion,
     sessionId,
     revision,
-    state,
+    state: state.synth
+      ? {
+          ...state,
+          synth: {
+            ...state.synth,
+            pressedMidi: [...state.synth.pressedMidi],
+          },
+        }
+      : state,
+  };
+}
+
+export function mergePresentationInteractionState(
+  current: PresentationInteractionState | undefined,
+  incoming: PresentationInteractionState,
+): PresentationInteractionState {
+  if (!current || current.frameId !== incoming.frameId) {
+    return incoming;
+  }
+
+  return {
+    ...current,
+    ...incoming,
   };
 }
 
@@ -600,6 +625,10 @@ function isPresentationInteractionState(
   }
 
   if (value.pointer !== undefined && !isNormalizedPoint(value.pointer)) {
+    return false;
+  }
+
+  if (value.synth !== undefined && !isSynthPresentationState(value.synth)) {
     return false;
   }
 

@@ -5,15 +5,35 @@ export type VoiceHandle = {
 	sustainLevel: number
 	attackEndTime: number
 	decayEndTime: number
+	releaseTime: number
 }
 
 export type FilterTarget = 'notes' | 'chords'
+export type SynthWaveform = OscillatorType | 'soft-square' | 'tape-stack'
+
+const SILENCE_FLOOR = 0.0001
+
+export type EnvelopeParams = {
+	attack: number
+	decay: number
+	sustain: number
+	release: number
+}
 
 export interface SynthParams {
-	wave: OscillatorType
+	wave: SynthWaveform
+	chordWave: SynthWaveform
 	voices: number // unison voices
+	chordVoices: number
 	detuneSpread: number // cents total spread
-	env: { attack: number; decay: number; sustain: number; release: number }
+	chordDetuneSpread: number
+	stereoWidth: number
+	chordStereoWidth: number
+	drive: number // normalized saturation amount
+	filterEnvelopeAmount: number // normalized four-octave sweep
+	filterEnvelopeDecay: number // seconds
+	env: EnvelopeParams
+	chordEnv: EnvelopeParams
 	filterNotes: { cutoff: number; q: number; type: BiquadFilterType }
 	filterChords: { cutoff: number; q: number; type: BiquadFilterType }
 	fx: {
@@ -47,6 +67,11 @@ export class SynthEngine {
 	// building blocks
 	private filterNotes: BiquadFilterNode
 	private filterChords: BiquadFilterNode
+	private drive: WaveShaperNode
+	private driveMakeup: GainNode
+	private tapeStackWave: PeriodicWave
+	private softSquareWave: PeriodicWave
+	private appliedDrive = Number.NaN
 	private tremLFO: OscillatorNode
 	private tremGain: GainNode
 	private vibrLFO: OscillatorNode
@@ -54,7 +79,8 @@ export class SynthEngine {
 	private chorusDelayL: DelayNode
 	private chorusDelayR: DelayNode
 	private chorusLFO: OscillatorNode
-	private chorusGain: GainNode
+	private chorusGainL: GainNode
+	private chorusGainR: GainNode
 	private chorusMix: GainNode
 	private chorusBypass: GainNode
 	private delay: DelayNode
@@ -69,16 +95,15 @@ export class SynthEngine {
 
 	constructor(ctx: AudioContext, params: Partial<SynthParams> = {}) {
 		this.ctx = ctx
-		// Lower master gain to prevent clipping when multiple notes play
-		this.master = new GainNode(ctx, { gain: 0.5 })
+		this.master = new GainNode(ctx, { gain: 0.46 })
 
-		// Add gentle compression to prevent distortion and improve perceived loudness
+		// Preserve fullness without the pumping caused by fast, heavy compression.
 		this.compressor = new DynamicsCompressorNode(ctx, {
-			threshold: -24, // Start compressing at -24dB
-			knee: 30, // Gentle knee for smooth compression
-			ratio: 4, // 4:1 ratio
-			attack: 0.003, // Fast attack to catch peaks
-			release: 0.25, // Medium release
+			threshold: -12,
+			knee: 18,
+			ratio: 2,
+			attack: 0.015,
+			release: 0.18,
 		})
 
 		// Use a gentler filter curve for cleaner sound
@@ -93,6 +118,13 @@ export class SynthEngine {
 			frequency: 4000, // Slightly darker default for chords
 			Q: 0.7, // Slightly higher Q for chords
 		})
+		this.drive = new WaveShaperNode(ctx, {
+			curve: buildDriveCurve(0),
+			oversample: '4x',
+		})
+		this.driveMakeup = new GainNode(ctx, { gain: 1 })
+		this.tapeStackWave = buildTapeStackWave(ctx)
+		this.softSquareWave = buildSoftSquareWave(ctx)
 
 		// Tremolo (amplitude)
 		this.tremLFO = new OscillatorNode(ctx, { frequency: 5, type: 'sine' })
@@ -106,14 +138,16 @@ export class SynthEngine {
 		this.vibrLFO.connect(this.vibrGain)
 		this.vibrLFO.start()
 
-		// Improved Chorus with better stereo imaging
-		this.chorusDelayL = new DelayNode(ctx, { delayTime: 0.02 })
-		this.chorusDelayR = new DelayNode(ctx, { delayTime: 0.025 })
+		// Opposing delay modulation creates width without pitchy movement.
+		this.chorusDelayL = new DelayNode(ctx, { delayTime: 0.018 })
+		this.chorusDelayR = new DelayNode(ctx, { delayTime: 0.022 })
 		this.chorusLFO = new OscillatorNode(ctx, { frequency: 0.4, type: 'sine' })
-		this.chorusGain = new GainNode(ctx, { gain: 0.002 }) // Subtler modulation
-		this.chorusLFO.connect(this.chorusGain)
-		this.chorusGain.connect(this.chorusDelayL.delayTime)
-		this.chorusGain.connect(this.chorusDelayR.delayTime)
+		this.chorusGainL = new GainNode(ctx, { gain: 0.002 })
+		this.chorusGainR = new GainNode(ctx, { gain: -0.002 })
+		this.chorusLFO.connect(this.chorusGainL)
+		this.chorusLFO.connect(this.chorusGainR)
+		this.chorusGainL.connect(this.chorusDelayL.delayTime)
+		this.chorusGainR.connect(this.chorusDelayR.delayTime)
 		this.chorusMix = new GainNode(ctx, { gain: 0 })
 		this.chorusBypass = new GainNode(ctx, { gain: 1 })
 		this.chorusLFO.start()
@@ -133,8 +167,10 @@ export class SynthEngine {
 		// wire graph: filter -> (chorus split) -> (delay split) -> (reverb split) -> master -> destination
 		const chorusInput = new GainNode(ctx)
 		const chorusWet = new GainNode(ctx)
-		chorusInput.connect(this.chorusDelayL).connect(chorusWet)
-		chorusInput.connect(this.chorusDelayR).connect(chorusWet)
+		const chorusPanL = new StereoPannerNode(ctx, { pan: -0.8 })
+		const chorusPanR = new StereoPannerNode(ctx, { pan: 0.8 })
+		chorusInput.connect(this.chorusDelayL).connect(chorusPanL).connect(chorusWet)
+		chorusInput.connect(this.chorusDelayR).connect(chorusPanR).connect(chorusWet)
 		chorusWet.connect(this.chorusMix)
 		chorusInput.connect(this.chorusBypass)
 
@@ -162,9 +198,23 @@ export class SynthEngine {
 
 		this.params = {
 			wave: 'triangle',
+			chordWave: 'triangle',
 			voices: 3,
+			chordVoices: 2,
 			detuneSpread: 8, // Reduced for less phasiness
+			chordDetuneSpread: 2.5,
+			stereoWidth: 0.2,
+			chordStereoWidth: 0.4,
+			drive: 0,
+			filterEnvelopeAmount: 0,
+			filterEnvelopeDecay: 0.2,
 			env: { attack: 0.005, decay: 0.05, sustain: 0.85, release: 0.05 },
+			chordEnv: {
+				attack: 0.04,
+				decay: 0.18,
+				sustain: 0.82,
+				release: 0.3,
+			},
 			filterNotes: { cutoff: 6000, q: 0.5, type: 'lowpass' },
 			filterChords: { cutoff: 4000, q: 0.7, type: 'lowpass' },
 			fx: {
@@ -189,9 +239,10 @@ export class SynthEngine {
 			...params,
 		}
 
-		// Connect both filters to chorus input
-		this.filterNotes.connect(chorusInput)
-		this.filterChords.connect(chorusInput)
+		// Keep optional drive downstream of both independently filtered buses.
+		this.filterNotes.connect(this.drive)
+		this.filterChords.connect(this.drive)
+		this.drive.connect(this.driveMakeup).connect(chorusInput)
 
 		this.applyParams()
 
@@ -211,6 +262,7 @@ export class SynthEngine {
 		this.filterChords.type = p.filterChords.type
 		this.filterChords.frequency.value = p.filterChords.cutoff
 		this.filterChords.Q.value = p.filterChords.q
+		this.applyDrive()
 
 		// tremolo
 		this.tremLFO.frequency.value = p.fx.tremoloRate
@@ -220,7 +272,8 @@ export class SynthEngine {
 
 		// chorus
 		this.chorusLFO.frequency.value = p.fx.chorusRate
-		this.chorusGain.gain.value = p.fx.chorusDepthMs / 1000 // ms -> sec
+		this.chorusGainL.gain.value = p.fx.chorusDepthMs / 1000
+		this.chorusGainR.gain.value = -p.fx.chorusDepthMs / 1000
 		this.chorusMix.gain.value = p.fx.chorusOn ? p.fx.chorusMix : 0
 
 		// delay
@@ -233,12 +286,15 @@ export class SynthEngine {
 	}
 
 	setFilterCutoff(v: number, target: FilterTarget = 'notes') {
+		const now = this.ctx.currentTime
 		if (target === 'notes') {
 			this.params.filterNotes.cutoff = v
-			this.filterNotes.frequency.value = v
+			this.filterNotes.frequency.cancelScheduledValues(now)
+			this.filterNotes.frequency.setValueAtTime(v, now)
 		} else {
 			this.params.filterChords.cutoff = v
-			this.filterChords.frequency.value = v
+			this.filterChords.frequency.cancelScheduledValues(now)
+			this.filterChords.frequency.setValueAtTime(v, now)
 		}
 	}
 	setFilterQ(v: number, target: FilterTarget = 'notes') {
@@ -250,8 +306,12 @@ export class SynthEngine {
 			this.filterChords.Q.value = v
 		}
 	}
-	setDetuneSpread(cents: number) {
-		this.params.detuneSpread = cents
+	setDetuneSpread(cents: number, target: FilterTarget = 'notes') {
+		if (target === 'notes') {
+			this.params.detuneSpread = cents
+		} else {
+			this.params.chordDetuneSpread = cents
+		}
 	}
 	setAttack(sec: number) {
 		this.params.env.attack = sec
@@ -260,11 +320,39 @@ export class SynthEngine {
 		this.params.env.release = sec
 	}
 
-	setWave(w: OscillatorType) {
-		this.params.wave = w
+	setDrive(amount: number) {
+		this.params.drive = Math.min(1, Math.max(0, amount))
+		this.applyDrive()
 	}
-	setVoices(n: number) {
-		this.params.voices = n
+
+	setFilterEnvelope(amount: number, decay: number) {
+		this.params.filterEnvelopeAmount = Math.min(1, Math.max(0, amount))
+		this.params.filterEnvelopeDecay = Math.max(0.01, decay)
+	}
+
+	setWave(w: SynthWaveform, target: FilterTarget = 'notes') {
+		if (target === 'notes') {
+			this.params.wave = w
+		} else {
+			this.params.chordWave = w
+		}
+	}
+	setVoices(n: number, target: FilterTarget = 'notes') {
+		if (target === 'notes') {
+			this.params.voices = n
+		} else {
+			this.params.chordVoices = n
+		}
+	}
+	setStereoWidth(width: number, target: FilterTarget = 'notes') {
+		if (target === 'notes') {
+			this.params.stereoWidth = width
+		} else {
+			this.params.chordStereoWidth = width
+		}
+	}
+	setChordEnvelope(env: EnvelopeParams) {
+		this.params.chordEnv = { ...env }
 	}
 
 	setTremolo(on: boolean) {
@@ -325,9 +413,16 @@ export class SynthEngine {
 	}
 
 	// ——— Voice handling ———
-	noteOn(freqs: number[], filterTarget: FilterTarget = 'notes'): VoiceHandle[] {
+	noteOn(
+		freqs: number[],
+		filterTarget: FilterTarget = 'notes',
+		velocity = 1,
+	): VoiceHandle[] {
 		const now = this.ctx.currentTime
+		const envelope =
+			filterTarget === 'notes' ? this.params.env : this.params.chordEnv
 		const voices = freqs.map((f) => this.spawnVoice(f, filterTarget))
+		this.triggerFilterEnvelope(filterTarget, now)
 
 		// Scale gain based on number of notes to prevent clipping in chords
 		const chordGainScale = 1 / Math.sqrt(freqs.length)
@@ -337,21 +432,22 @@ export class SynthEngine {
 			this.activeVoices.add(v)
 			v.env.gain.cancelScheduledValues(now)
 
-			const peakLevel = chordGainScale
+			const peakLevel = chordGainScale * velocity
 			const sustainLevel = Math.max(
-				0.01,
-				this.params.env.sustain * chordGainScale,
+				SILENCE_FLOOR,
+				envelope.sustain * chordGainScale * velocity,
 			)
-			const attackTime = this.params.env.attack
-			const decayTime = this.params.env.decay
+			const attackTime = envelope.attack
+			const decayTime = envelope.decay
 
 			// Store timing and sustain level for later use in noteOff
 			v.sustainLevel = sustainLevel
 			v.attackEndTime = now + attackTime
 			v.decayEndTime = now + attackTime + decayTime
+			v.releaseTime = envelope.release
 
 			// Attack phase: 0 -> peak
-			v.env.gain.setValueAtTime(0.01, now)
+			v.env.gain.setValueAtTime(SILENCE_FLOOR, now)
 			v.env.gain.exponentialRampToValueAtTime(peakLevel, now + attackTime)
 
 			// Decay phase: peak -> sustain
@@ -367,34 +463,25 @@ export class SynthEngine {
 	noteOff(voices: VoiceHandle[]) {
 		const now = this.ctx.currentTime
 		for (const v of voices) {
-			// Cancel any scheduled automations
-			v.env.gain.cancelScheduledValues(now)
+			if (Number.isFinite(v.stopAt)) continue
 
-			// Calculate current gain level based on envelope phase
-			let currentGain: number
-
-			if (now < v.attackEndTime) {
-				// Still in attack phase - use the current interpolated value
-				// We can't easily calculate this, so just use sustainLevel as fallback
-				currentGain = v.sustainLevel
-			} else if (now < v.decayEndTime) {
-				// Still in decay phase - interpolate between peak and sustain
-				// For exponential ramps this is complex, so use sustain as approximation
-				currentGain = v.sustainLevel
-			} else {
-				// In sustain phase - use the sustain level
-				currentGain = v.sustainLevel
+			try {
+				v.env.gain.cancelAndHoldAtTime(now)
+			} catch {
+				v.env.gain.cancelScheduledValues(now)
+				v.env.gain.setValueAtTime(
+					Math.max(SILENCE_FLOOR, v.sustainLevel),
+					now,
+				)
 			}
 
-			// Set the current value and ramp down to silence
-			v.env.gain.setValueAtTime(Math.max(0.01, currentGain), now)
 			v.env.gain.exponentialRampToValueAtTime(
-				0.01,
-				now + this.params.env.release,
+				SILENCE_FLOOR,
+				now + v.releaseTime,
 			)
 
-			// Schedule the oscillators to stop after the release completes
-			v.stopAt = now + this.params.env.release + 0.05
+			v.stopAt = now + v.releaseTime + 0.02
+			v.parts.forEach((oscillator) => oscillator.stop(v.stopAt))
 		}
 	}
 
@@ -405,27 +492,52 @@ export class SynthEngine {
 			freq = 440 // fallback to A4
 		}
 
-		// Poly-unison: N oscillators spread by detune
+		const wave =
+			filterTarget === 'notes' ? this.params.wave : this.params.chordWave
+		const voiceCount =
+			filterTarget === 'notes'
+				? this.params.voices
+				: this.params.chordVoices
+		const detuneSpread =
+			filterTarget === 'notes'
+				? this.params.detuneSpread
+				: this.params.chordDetuneSpread
+		const stereoWidth =
+			filterTarget === 'notes'
+				? this.params.stereoWidth
+				: this.params.chordStereoWidth
+
+		// Keep the main oscillator centered and spread quiet unison layers around it.
 		const parts: OscillatorNode[] = []
-		const det = this.params.detuneSpread
-		for (let i = 0; i < this.params.voices; i++) {
+		const mix = new GainNode(this.ctx)
+		for (let i = 0; i < voiceCount; i++) {
 			const o = new OscillatorNode(this.ctx, {
-				type: this.params.wave,
 				frequency: freq,
 			})
+			if (wave === 'tape-stack') {
+				o.setPeriodicWave(this.tapeStackWave)
+			} else if (wave === 'soft-square') {
+				o.setPeriodicWave(this.softSquareWave)
+			} else {
+				o.type = wave
+			}
 			const cents =
-				this.params.voices === 1
+				voiceCount === 1
 					? 0
-					: ((i / (this.params.voices - 1)) * 2 - 1) * det
+					: ((i / (voiceCount - 1)) * 2 - 1) * detuneSpread
 			o.detune.value = cents
 			// vibrato routing
 			if (this.params.fx.vibratoOn) this.vibrGain.connect(o.frequency)
+			const layerGain = new GainNode(this.ctx, { gain: 1 / voiceCount })
+			const pan =
+				voiceCount === 1
+					? 0
+					: ((i / (voiceCount - 1)) * 2 - 1) * stereoWidth
+			const panner = new StereoPannerNode(this.ctx, { pan })
+			o.connect(layerGain).connect(panner).connect(mix)
 			o.start()
 			parts.push(o)
 		}
-
-		const mix = new GainNode(this.ctx, { gain: 1 / this.params.voices })
-		parts.forEach((o) => o.connect(mix))
 
 		const env = new GainNode(this.ctx, { gain: 0 })
 		mix.connect(env)
@@ -442,7 +554,38 @@ export class SynthEngine {
 			sustainLevel: 0,
 			attackEndTime: 0,
 			decayEndTime: 0,
+			releaseTime: 0,
 		}
+	}
+
+	private triggerFilterEnvelope(target: FilterTarget, now: number) {
+		const filter = target === 'notes' ? this.filterNotes : this.filterChords
+		const base =
+			target === 'notes'
+				? this.params.filterNotes.cutoff
+				: this.params.filterChords.cutoff
+		const amount = this.params.filterEnvelopeAmount
+
+		filter.frequency.cancelScheduledValues(now)
+		filter.frequency.setValueAtTime(base, now)
+		if (target === 'chords' || amount <= 0) return
+
+		const peak = Math.min(
+			this.ctx.sampleRate * 0.45,
+			base * 2 ** (amount * 4),
+		)
+		filter.frequency.exponentialRampToValueAtTime(peak, now + 0.02)
+		filter.frequency.exponentialRampToValueAtTime(
+			base,
+			now + 0.02 + this.params.filterEnvelopeDecay,
+		)
+	}
+
+	private applyDrive() {
+		if (this.params.drive === this.appliedDrive) return
+		this.appliedDrive = this.params.drive
+		this.drive.curve = buildDriveCurve(this.appliedDrive)
+		this.driveMakeup.gain.value = 1 - this.appliedDrive * 0.32
 	}
 
 	destroy() {
@@ -474,10 +617,10 @@ export class SynthEngine {
 					voice.parts.forEach((osc) => {
 						try {
 							osc.stop()
-							osc.disconnect()
 						} catch {
 							// Oscillator might already be stopped
 						}
+						osc.disconnect()
 					})
 					// Disconnect envelope
 					voice.env.disconnect()
@@ -486,6 +629,62 @@ export class SynthEngine {
 			}
 		}, 100) // Check every 100ms
 	}
+}
+
+function buildDriveCurve(amount: number) {
+	const samples = 4096
+	const curve = new Float32Array(samples)
+	const normalizedAmount = Math.min(1, Math.max(0, amount))
+
+	if (normalizedAmount === 0) {
+		for (let i = 0; i < samples; i++) {
+			curve[i] = (i / (samples - 1)) * 2 - 1
+		}
+		return curve
+	}
+
+	const drive = 1 + normalizedAmount * 4
+	const normalization = Math.tanh(drive)
+	for (let i = 0; i < samples; i++) {
+		const input = (i / (samples - 1)) * 2 - 1
+		curve[i] = Math.tanh(input * drive) / normalization
+	}
+	return curve
+}
+
+function buildTapeStackWave(ctx: BaseAudioContext) {
+	const harmonicCount = 32
+	const real = new Float32Array(harmonicCount + 1)
+	const imaginary = new Float32Array(harmonicCount + 1)
+
+	for (let harmonic = 1; harmonic <= harmonicCount; harmonic++) {
+		const saw = 1 / harmonic
+		const triangle =
+			harmonic % 2 === 1
+				? (harmonic % 4 === 1 ? 1 : -1) * (0.48 / harmonic ** 2)
+				: 0
+		const damping = Math.exp(-harmonic / 22)
+		imaginary[harmonic] = (saw + triangle) * damping
+	}
+
+	return ctx.createPeriodicWave(real, imaginary, {
+		disableNormalization: false,
+	})
+}
+
+function buildSoftSquareWave(ctx: BaseAudioContext) {
+	const harmonicCount = 31
+	const real = new Float32Array(harmonicCount + 1)
+	const imaginary = new Float32Array(harmonicCount + 1)
+
+	for (let harmonic = 1; harmonic <= harmonicCount; harmonic += 2) {
+		imaginary[harmonic] =
+			(1 / harmonic) * Math.exp(-(harmonic - 1) / 12)
+	}
+
+	return ctx.createPeriodicWave(real, imaginary, {
+		disableNormalization: false,
+	})
 }
 
 function buildSimpleImpulse(ctx: AudioContext, seconds = 1.6) {

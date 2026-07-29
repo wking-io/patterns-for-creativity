@@ -1547,9 +1547,10 @@ body {
   margin: 0;
   pointer-events: none;
   position: absolute;
-  text-align: left;
+  text-align: center;
   text-transform: uppercase;
   top: 5.44%;
+  transform: translateX(-50%) !important;
   user-select: none;
   white-space: nowrap;
   z-index: 2;
@@ -1557,22 +1558,22 @@ body {
 
 .final-path-slide__label--catalysts {
   --final-path-label-color: #fba92f;
-  --final-path-label-x: 2.532%;
+  --final-path-label-x: 12.5%;
 }
 
 .final-path-slide__label--ideas {
   --final-path-label-color: #ff8409;
-  --final-path-label-x: 27.532%;
+  --final-path-label-x: 37.5%;
 }
 
 .final-path-slide__label--reality {
   --final-path-label-color: #ff6200;
-  --final-path-label-x: 52.532%;
+  --final-path-label-x: 62.5%;
 }
 
 .final-path-slide__label--taste {
   --final-path-label-color: var(--color-p0);
-  --final-path-label-x: 77.532%;
+  --final-path-label-x: 87.5%;
 }
 
 .final-path-slide__diagram {
@@ -2460,6 +2461,21 @@ body {
   width: 66.4835%;
 }
 
+.gangprompting-tweet-slide__image {
+  display: block;
+  height: auto;
+  left: 50%;
+  max-width: none;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  position: absolute;
+  top: 47%;
+  transform: translate(-50%,
+      calc(-50% - var(--language-tweet-source-y-offset)));
+  user-select: none;
+  width: 66.4835%;
+}
+
 .output-not-artifacts-tweet-slide {
   overflow: hidden;
   position: relative;
@@ -2688,7 +2704,7 @@ body {
 }
 
 .catalyst-slide__label-strike {
-  background: var(--color-p0);
+  background: var(--color-dark-t0);
   height: calc(var(--motion-deck-height) * 0.006);
   left: -1.5%;
   pointer-events: none;
@@ -2954,7 +2970,7 @@ body {
   position: absolute;
   text-align: center;
   text-transform: uppercase;
-  top: 50%;
+  top: 52%;
   transform: translate(-50%, -50%);
   white-space: nowrap;
 }
@@ -3443,14 +3459,20 @@ body {
   width: 28.35%;
 }
 
+
+.feedback-practice-slide--optimize-for-exploration .feedback-practice-slide__headline,
+.feedback-practice-slide--optimize-for-exploration .feedback-practice-slide__headline-shadow {
+  width: 41%;
+}
+
 .feedback-practice-slide--artifacts-less-sacred .feedback-practice-slide__headline,
 .feedback-practice-slide--artifacts-less-sacred .feedback-practice-slide__headline-shadow {
-  width: 31.9%;
+  width: 41%;
 }
 
 .feedback-practice-slide--perspectives-possibilities .feedback-practice-slide__headline,
 .feedback-practice-slide--perspectives-possibilities .feedback-practice-slide__headline-shadow {
-  width: 46%;
+  width: 53%;
 }
 
 [data-frame-id="ideas-practice-master-medium"] .slide-panel--constrained-gradient,
@@ -3535,9 +3557,7 @@ body {
 
 .tile-reveal-slide__playback-cursor {
   color: var(--color-light-s0);
-  filter: drop-shadow(0 calc(var(--motion-deck-height) * 0.004)
-    calc(var(--motion-deck-height) * 0.006)
-    color-mix(in srgb, var(--color-dark-s0) 55%, transparent));
+  filter: drop-shadow(0 calc(var(--motion-deck-height) * 0.004) calc(var(--motion-deck-height) * 0.006) color-mix(in srgb, var(--color-dark-s0) 55%, transparent));
   height: calc(var(--motion-deck-height) * 0.042);
   opacity: 0;
   pointer-events: none;
@@ -3554,11 +3574,7 @@ body {
 
 .tile-reveal-slide__playback-cursor[data-clicking="true"] {
   filter:
-    drop-shadow(0 0 calc(var(--motion-deck-height) * 0.01)
-      color-mix(in srgb, var(--color-p0) 82%, transparent))
-    drop-shadow(0 calc(var(--motion-deck-height) * 0.004)
-      calc(var(--motion-deck-height) * 0.006)
-      color-mix(in srgb, var(--color-dark-s0) 55%, transparent));
+    drop-shadow(0 0 calc(var(--motion-deck-height) * 0.01) color-mix(in srgb, var(--color-p0) 82%, transparent)) drop-shadow(0 calc(var(--motion-deck-height) * 0.004) calc(var(--motion-deck-height) * 0.006) color-mix(in srgb, var(--color-dark-s0) 55%, transparent));
   transform: translate(-10%, -5%) scale(0.78);
 }
 
@@ -3572,8 +3588,7 @@ body {
 .tile-reveal-slide__controls {
   align-items: center;
   background: color-mix(in srgb, var(--color-dark-s0) 92%, transparent);
-  border: max(1px, calc(var(--motion-deck-height) * 0.0008)) solid
-    color-mix(in srgb, var(--color-light-s0) 18%, transparent);
+  border: max(1px, calc(var(--motion-deck-height) * 0.0008)) solid color-mix(in srgb, var(--color-light-s0) 18%, transparent);
   border-radius: calc(var(--motion-deck-height) * 0.012);
   bottom: 4.5%;
   color: var(--color-light-s0);
@@ -3606,8 +3621,7 @@ body {
 .tile-reveal-slide__transport-button {
   appearance: none;
   background: transparent;
-  border: max(1px, calc(var(--motion-deck-height) * 0.0008)) solid
-    color-mix(in srgb, var(--color-light-s0) 28%, transparent);
+  border: max(1px, calc(var(--motion-deck-height) * 0.0008)) solid color-mix(in srgb, var(--color-light-s0) 28%, transparent);
   color: inherit;
   cursor: pointer;
   font: inherit;
@@ -3644,8 +3658,7 @@ body {
 
 .tile-reveal-slide__recording-controls {
   align-items: center;
-  border-left: max(1px, calc(var(--motion-deck-height) * 0.0008)) solid
-    color-mix(in srgb, var(--color-light-s0) 18%, transparent);
+  border-left: max(1px, calc(var(--motion-deck-height) * 0.0008)) solid color-mix(in srgb, var(--color-light-s0) 18%, transparent);
   display: flex;
   gap: calc(var(--motion-deck-height) * 0.005);
   margin-left: calc(var(--motion-deck-height) * 0.002);
@@ -4123,31 +4136,32 @@ body {
 }
 
 .exposure-practice-collection__viewport {
+  column-gap: var(--exposure-collection-gap);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   inset: 0;
   overflow: hidden;
   position: absolute;
 }
 
-.exposure-practice-collection__track {
+.exposure-practice-collection__column {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.exposure-practice-collection__column-track {
   display: flex;
   flex-direction: column;
   transform: translate3d(0, 0, 0);
   width: 100%;
 }
 
-.exposure-practice-collection--animated .exposure-practice-collection__track {
-  animation: exposure-collection-scroll
-    var(--exposure-collection-scroll-duration, 180s)
-    linear
-    var(--exposure-collection-scroll-delay, 0s)
-    infinite;
+.exposure-practice-collection--animated .exposure-practice-collection__column-track {
+  animation: exposure-collection-scroll var(--exposure-collection-scroll-duration, 180s) linear var(--exposure-collection-scroll-delay, 0s) infinite;
   will-change: transform;
 }
 
-.exposure-practice-collection__grid {
-  column-count: 4;
-  column-fill: balance;
-  column-gap: var(--exposure-collection-gap);
+.exposure-practice-collection__column-sequence {
   flex: 0 0 auto;
   width: 100%;
 }
@@ -4178,7 +4192,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .exposure-practice-collection--animated .exposure-practice-collection__track {
+  .exposure-practice-collection--animated .exposure-practice-collection__column-track {
     animation: none;
     transform: none;
   }

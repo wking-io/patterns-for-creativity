@@ -112,13 +112,15 @@ export function DeviceTimeControl({
 	unit,
 	updateField,
 	sensitivity = 0.01,
+	max = Number.POSITIVE_INFINITY,
 	onFocus,
 	onBlur,
 	isFocused,
 }: SharedValueControlProps & {
-	unit: string
-	sensitivity?: number
-}) {
+		unit: string
+		sensitivity?: number
+		max?: number
+	}) {
 	const [isDragging, setIsDragging] = useState(false)
 	const startValueRef = useRef(value)
 	const inputRef = useRef<HTMLInputElement>(null)
@@ -127,11 +129,14 @@ export function DeviceTimeControl({
 	useEffect(() => {
 		if (!isDragging) return
 
-		const handleMouseMove = (event: MouseEvent) => {
-			const nextValue = Math.max(
-				0,
-				startValueRef.current + event.movementX * sensitivity,
-			)
+			const handleMouseMove = (event: MouseEvent) => {
+				const nextValue = Math.min(
+					max,
+					Math.max(
+						0,
+						startValueRef.current + event.movementX * sensitivity,
+					),
+				)
 			startValueRef.current = nextValue
 			updateField(nextValue)
 			onFocus?.()
@@ -148,7 +153,7 @@ export function DeviceTimeControl({
 			document.removeEventListener('mousemove', handleMouseMove)
 			document.removeEventListener('mouseup', handleMouseUp)
 		}
-	}, [isDragging, onFocus, sensitivity, updateField])
+	}, [isDragging, max, onFocus, sensitivity, updateField])
 
 	const handleMouseDown = (event: React.MouseEvent) => {
 		inputRef.current?.focus()
@@ -171,10 +176,15 @@ export function DeviceTimeControl({
 					value={(value * (unit === 'ms' ? 1000 : 1)).toFixed(0)}
 					className="pointer-events-auto inline-block min-w-10 flex-1 px-2 py-1 focus:outline-none"
 					onChange={(event) => {
-						const nextValue = Number(event.target.value)
-						if (Number.isFinite(nextValue)) {
-							updateField(Math.max(0, nextValue) / (unit === 'ms' ? 1000 : 1))
-						}
+							const nextValue = Number(event.target.value)
+							if (Number.isFinite(nextValue)) {
+								updateField(
+									Math.min(
+										max,
+										Math.max(0, nextValue) / (unit === 'ms' ? 1000 : 1),
+									),
+								)
+							}
 					}}
 					onFocus={onFocus}
 					onBlur={onBlur}

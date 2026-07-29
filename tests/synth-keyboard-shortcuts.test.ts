@@ -21,6 +21,15 @@ assert.equal(
 	'a text-entry field should retain normal typing behavior',
 )
 assert.equal(
+	isSynthShortcutTypingTarget({
+		readOnly: true,
+		tagName: 'input',
+		type: 'text',
+	}),
+	false,
+	'a read-only synth display should not disable the piano shortcuts',
+)
+assert.equal(
 	isSynthShortcutTypingTarget({ tagName: 'textarea' }),
 	true,
 )

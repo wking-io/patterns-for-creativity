@@ -84,7 +84,6 @@
   --presenter-control-icon-size: 16px;
   --presenter-control-icon-padding: 3px;
   --presenter-control-padding: 3px 8px;
-  --presenter-view-padding-bottom: 22px;
   background: #11100f;
   color: #f3f1f1;
   display: flex;
@@ -92,18 +91,20 @@
   height: 100dvh;
   min-width: 0;
   overflow: auto;
-  padding: 18px 22px var(--presenter-view-padding-bottom);
+  padding: 0;
   width: 100dvw;
 }
 
 .presenter-view-header {
   align-items: flex-start;
+  border-bottom: 1px solid #383431;
   display: flex;
   flex-wrap: wrap;
   gap: 24px;
   justify-content: space-between;
-  margin: 0 auto 16px;
-  max-width: 1800px;
+  margin: 0;
+  max-width: none;
+  padding: 18px 22px;
   width: 100%;
 }
 
@@ -116,36 +117,14 @@
   text-align: right;
 }
 
-.presenter-timing {
+.presenter-navigation {
   align-items: center;
   display: flex;
   flex: 0 1 auto;
   gap: 14px;
 }
 
-.presenter-elapsed-time {
-  color: #f3f1f1;
-  font-size: 1rem;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-  line-height: 28px;
-  min-width: 92px;
-}
-
-.presenter-elapsed-time[data-timer-status="running"] {
-  color: #a8d99a;
-}
-
-.presenter-elapsed-time[data-timer-status="paused"] {
-  color: #ffd5ab;
-}
-
-.presenter-timer-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.presenter-view-root .presenter-timer-icon-control {
+.presenter-view-root .presenter-navigation-control {
   align-items: center;
   display: inline-flex;
   height: var(--presenter-control-height);
@@ -155,7 +134,7 @@
   width: var(--presenter-control-height);
 }
 
-.presenter-timer-icon-control svg {
+.presenter-navigation-control svg {
   display: block;
   flex: none;
   height: var(--presenter-control-icon-size);
@@ -167,7 +146,8 @@
   font-size: 0.9rem;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
-  margin-inline-start: auto;
+  min-width: 72px;
+  text-align: center;
   white-space: nowrap;
 }
 
@@ -180,7 +160,8 @@
 }
 
 .presenter-view-root .presenter-audience-display-control,
-.presenter-view-root .presenter-blackout-control {
+.presenter-view-root .presenter-blackout-control,
+.presenter-view-root .presenter-notes-footer-control {
   align-items: center;
   display: inline-flex;
   height: var(--presenter-control-height);
@@ -191,7 +172,8 @@
 }
 
 .presenter-audience-display-control svg,
-.presenter-blackout-control svg {
+.presenter-blackout-control svg,
+.presenter-notes-footer-control svg {
   display: block;
   flex: none;
   height: var(--presenter-control-icon-size);
@@ -248,10 +230,10 @@
 .presenter-view-workspace {
   display: grid;
   flex: 1;
-  gap: 18px;
-  grid-template-columns: minmax(560px, 1.7fr) minmax(340px, 0.82fr);
-  margin: 0 auto;
-  max-width: 1800px;
+  gap: 0;
+  grid-template-columns: minmax(0, 40%) minmax(0, 60%);
+  margin: 0;
+  max-width: none;
   min-height: 0;
   width: 100%;
 }
@@ -259,7 +241,7 @@
 .presenter-preview-column {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 0;
   min-height: 0;
   min-width: 0;
 }
@@ -272,6 +254,7 @@
 }
 
 .presenter-preview-card--current {
+  border-radius: 0;
   container-type: size;
   display: grid;
   flex: 1 1 auto;
@@ -300,6 +283,7 @@
   display: flex;
   gap: 14px;
   justify-content: flex-end;
+  padding: 14px 22px 22px;
 }
 
 .presenter-notes-file-actions {
@@ -382,7 +366,7 @@
 
 .presenter-notes-panel {
   background: #f3f1f1;
-  border-radius: 12px;
+  border-radius: 0;
   color: #27221f;
   display: flex;
   flex-direction: column;
@@ -426,7 +410,7 @@
 .presenter-notes-editor textarea {
   background: transparent;
   border: 0;
-  border-radius: 12px 12px 0 0;
+  border-radius: 0;
   color: #27221f;
   flex: 1;
   font: inherit;
@@ -445,7 +429,7 @@
 
 .presenter-notes-panel__footer {
   align-items: center;
-  bottom: calc(-1 * var(--presenter-view-padding-bottom));
+  bottom: 0;
   color: #786f69;
   display: flex;
   flex-wrap: wrap;
@@ -572,7 +556,7 @@
     min-height: 500px;
   }
 
-  .presenter-timing {
+  .presenter-navigation {
     flex-wrap: nowrap;
     width: auto;
   }
@@ -580,34 +564,52 @@
 
 @media (max-width: 640px) {
   .presenter-view-root {
-    --presenter-view-padding-bottom: 12px;
-    padding: 12px;
+    padding: 0 0 calc(53px + env(safe-area-inset-bottom));
   }
 
-  .presenter-preview-footer,
+  .presenter-view-header {
+    align-items: center;
+    background: #11100f;
+    border-bottom: 0;
+    border-top: 1px solid #383431;
+    bottom: 0;
+    flex-wrap: nowrap;
+    gap: 12px;
+    left: 0;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    position: fixed;
+    right: 0;
+    z-index: 50;
+  }
+
   .presenter-notes-panel__footer {
-    align-items: stretch;
-    flex-direction: column;
+    display: none;
   }
 
   .presenter-view-header__status {
     align-items: center;
+    margin-right: auto;
+    order: 1;
   }
 
-  .presenter-timing {
+  .presenter-view-header__presentation-actions {
+    gap: 8px;
+    justify-content: flex-start;
+  }
+
+  .presenter-navigation {
     align-items: center;
     flex-wrap: nowrap;
+    gap: 8px;
+    margin-left: auto;
+    order: 2;
   }
 
-  .presenter-audience-status {
-    align-items: center;
+  .presenter-view-root .presenter-notes-footer-control {
+    display: none;
   }
 
   .presenter-preview-card--next {
     width: 100%;
-  }
-
-  .presenter-notes-file-actions button {
-    flex: 1;
   }
 }
