@@ -1,4 +1,10 @@
 @import "tailwindcss";
+@import "@fontsource-variable/big-shoulders-display";
+@import "@fontsource/dela-gothic-one/latin-400";
+@import "@fontsource/libre-baskerville/latin-400";
+@import "@fontsource/libre-baskerville/latin-700";
+@import "@fontsource/silkscreen/latin-400";
+@import "@fontsource/silkscreen/latin-700";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -14,8 +20,8 @@
   --color-p0: #ff0000;
   --color-p1: #ffd5ab;
 
-  --font-offbit: "OffBit", sans-serif;
-  --font-schabo: "SCHABO", sans-serif;
+  --font-offbit: "Silkscreen", sans-serif;
+  --font-schabo: "Big Shoulders Display Variable", sans-serif;
   --font-device: "DepartureMono", ui-monospace, monospace;
   --font-code: "JetBrains Mono", ui-monospace, monospace;
 
@@ -47,54 +53,6 @@
   font-weight: 100 800;
   font-display: swap;
   src: url("/fonts/synth-demo/JetBrainsMono-Variable.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "OffBit";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/offbit/OffBit-Regular.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "OffBit";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("/fonts/offbit/OffBit-Bold.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "SCHABO";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/schabo/SCHABO-XCondensed.otf") format("opentype");
-}
-
-@font-face {
-  font-family: "Noppo";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/noppo/Noppo-Solid.otf") format("opentype");
-}
-
-@font-face {
-  font-family: "Redaction";
-  font-style: normal;
-  font-weight: 400;
-  font-display: swap;
-  src: url("/fonts/redaction/Redaction-Regular.woff2") format("woff2");
-}
-
-@font-face {
-  font-family: "Redaction";
-  font-style: normal;
-  font-weight: 700;
-  font-display: swap;
-  src: url("/fonts/redaction/Redaction-Bold.otf") format("opentype");
 }
 
 :root {
@@ -3058,7 +3016,7 @@ body {
   background: linear-gradient(105deg, #ff0000 0%, #ffd5ab 98.95%);
   background-clip: text;
   color: transparent;
-  font-family: "Noppo", sans-serif;
+  font-family: "Dela Gothic One", sans-serif;
   font-weight: 400;
   left: 50.08%;
   letter-spacing: 0.022em;
@@ -3069,7 +3027,7 @@ body {
 
 .building-software-learning-slide__title--front {
   color: var(--color-dark-t0);
-  font-family: "Redaction", serif;
+  font-family: "Libre Baskerville", serif;
   font-weight: 700;
   paint-order: stroke fill;
   top: 32.69%;
@@ -3101,7 +3059,7 @@ body {
 
 .building-software-quote-slide {
   color: var(--color-dark-t0);
-  font-family: "Redaction", serif;
+  font-family: "Libre Baskerville", serif;
   margin: 0;
   overflow: hidden;
   position: relative;

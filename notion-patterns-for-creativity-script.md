@@ -156,7 +156,7 @@ What comes next? You start noticing stuff. Now what? How many ideas are you capa
 ### Pattern: Try new things
 A lot of new things! Experiences are the raw material that feed creativity. I could wax poetic about this, but in one of the greatest tweets of all time Matt Wensing nails what this means:
 
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
 Experiences compound. They don't live in isolation, they interact and allow you to create new connections that you weren't able to make before.
 
@@ -171,7 +171,7 @@ Let me show you some examples.
 
 You have the raw material and now you can generate 1,000s of ideas...what now? Give someone a problem and there are endless ways to solve that problem, but how do you know which solutions matter? How do you pursue ideas that are great vs ideas that are good? This tweet:
 
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
 is exactly the point. The goal of creativity is to move you closer to the *right *solution with every iteration. Just because work is "creative" doesn't mean it is random, but you don't just stumble on this ability. It requires knowing the product, it requires understanding what people are trying to do, understanding the domain. If you work on a product for email workflows, then it sure as heck helps to know a lot about email and the reasons why people are sending them
 
@@ -183,7 +183,7 @@ Here are patterns for how you can get better at filtering the good ideas from th
 - /teach skill
 - Build to learn synth demo
 
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
 ### Pattern: Change your aperture
 Zoom out on the problem
@@ -193,12 +193,12 @@ Zoom out on the problem
 - What should happen after?
 - Context is King. AI can put it all at your fingertips. Glass
 
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
 ### Pattern: Language is power
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
 - AI doesn't care if you are an idiot. Leverage it to learn the language of the streams you're trying to swim in.
 
@@ -235,7 +235,7 @@ Getting started no matter how experienced you are can be a tough hurdle. Sometim
 
 So you have to stop asking the first ideas to be good. Here are some ways to do that.
 
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
 Notes on Play
 
@@ -247,11 +247,11 @@ Notes on Play
   - Dax
   - Grab screen shot of Smth Diction talk with whole team
 
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
 Okay we are masters of exploration now. But there is a rhythm. We have expanded, you have to contract. The goal of exploration is not exploration. It is getting the right signal. Getting to the right answer, and so we need to cover the last pattern.
 
@@ -271,7 +271,7 @@ How does this look in practice?
 - Belt
 - Make your own tools
 
-<unknown url="[private-notion-url-removed]" alt="bookmark"/>
+[Source bookmark omitted from the public repository.]
 
 So, AI can do your job... now what?
 

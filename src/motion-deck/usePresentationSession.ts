@@ -19,6 +19,8 @@ import {
   createPresentationTileRevealMessage,
   deliverPresentationMessage,
   getInitialAudienceBlackout,
+  getPresentationPostMessageTargetOrigin,
+  isExpectedPresentationWindowMessage,
   parsePresentationMessage,
   presentationChannelName,
   reduceAudienceConnection,
@@ -114,17 +116,20 @@ export function usePresentationSession({
 
   const sendMessage = useCallback((message: PresentationMessage) => {
     const senders: Array<(nextMessage: PresentationMessage) => void> = [];
+    const targetOrigin = getPresentationPostMessageTargetOrigin(
+      window.location.origin,
+    );
 
     if (channelRef.current) {
       senders.push((nextMessage) => channelRef.current?.postMessage(nextMessage));
     }
 
     if (viewMode === "presenter" && popupRef.current && !popupRef.current.closed) {
-      senders.push((nextMessage) => popupRef.current?.postMessage(nextMessage, "*"));
+      senders.push((nextMessage) => popupRef.current?.postMessage(nextMessage, targetOrigin));
     }
 
     if (viewMode === "audience" && window.opener && !window.opener.closed) {
-      senders.push((nextMessage) => window.opener.postMessage(nextMessage, "*"));
+      senders.push((nextMessage) => window.opener.postMessage(nextMessage, targetOrigin));
     }
 
     return deliverPresentationMessage(message, senders);
@@ -285,6 +290,19 @@ export function usePresentationSession({
       handleIncomingMessage(event.data);
     };
     const handleWindowMessage = (event: MessageEvent<unknown>) => {
+      const expectedSource = viewMode === "presenter"
+        ? popupRef.current
+        : window.opener;
+
+      if (!isExpectedPresentationWindowMessage({
+        eventOrigin: event.origin,
+        eventSource: event.source,
+        expectedOrigin: window.location.origin,
+        expectedSource,
+      })) {
+        return;
+      }
+
       handleIncomingMessage(event.data);
     };
 

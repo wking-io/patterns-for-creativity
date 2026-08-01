@@ -170,6 +170,28 @@ export function createAudienceBlackoutUrl(
   return url.toString();
 }
 
+export function getPresentationPostMessageTargetOrigin(origin: string) {
+  return origin === "null" ? "*" : origin;
+}
+
+export function isExpectedPresentationWindowMessage({
+  eventOrigin,
+  eventSource,
+  expectedOrigin,
+  expectedSource,
+}: {
+  eventOrigin: string;
+  eventSource: unknown;
+  expectedOrigin: string;
+  expectedSource: unknown;
+}) {
+  if (expectedSource == null || eventSource !== expectedSource) {
+    return false;
+  }
+
+  return expectedOrigin === "null" || eventOrigin === expectedOrigin;
+}
+
 export function getInitialAudienceBlackout(search: string) {
   return new URLSearchParams(search).get(audienceBlackoutSearchParameter) === "1";
 }

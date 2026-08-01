@@ -1,4 +1,8 @@
-## Agent skills
+# Agent instructions
+
+Start with [`docs/agents/codebase-guide.md`](docs/agents/codebase-guide.md). It
+explains the product, runtime surfaces, architecture, development workflow, and
+the invariants that should be preserved when changing the deck.
 
 ### Issue tracker
 

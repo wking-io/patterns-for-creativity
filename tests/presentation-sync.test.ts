@@ -20,6 +20,8 @@ import {
   deliverPresentationMessage,
   getDeckViewMode,
   getInitialAudienceBlackout,
+  getPresentationPostMessageTargetOrigin,
+  isExpectedPresentationWindowMessage,
   mergePresentationInteractionState,
   parsePresentationMessage,
   reduceAudienceConnection,
@@ -60,6 +62,49 @@ assert.equal(
 );
 assert.equal(getInitialAudienceBlackout("?view=audience&blackout=1"), true);
 assert.equal(getInitialAudienceBlackout("?view=audience"), false);
+assert.equal(
+  getPresentationPostMessageTargetOrigin("https://example.test"),
+  "https://example.test",
+);
+assert.equal(getPresentationPostMessageTargetOrigin("null"), "*");
+
+const expectedPresentationWindow = {};
+assert.equal(
+  isExpectedPresentationWindowMessage({
+    eventOrigin: "https://example.test",
+    eventSource: expectedPresentationWindow,
+    expectedOrigin: "https://example.test",
+    expectedSource: expectedPresentationWindow,
+  }),
+  true,
+);
+assert.equal(
+  isExpectedPresentationWindowMessage({
+    eventOrigin: "https://attacker.test",
+    eventSource: expectedPresentationWindow,
+    expectedOrigin: "https://example.test",
+    expectedSource: expectedPresentationWindow,
+  }),
+  false,
+);
+assert.equal(
+  isExpectedPresentationWindowMessage({
+    eventOrigin: "https://example.test",
+    eventSource: {},
+    expectedOrigin: "https://example.test",
+    expectedSource: expectedPresentationWindow,
+  }),
+  false,
+);
+assert.equal(
+  isExpectedPresentationWindowMessage({
+    eventOrigin: "null",
+    eventSource: expectedPresentationWindow,
+    expectedOrigin: "null",
+    expectedSource: expectedPresentationWindow,
+  }),
+  true,
+);
 
 const initialState = createPresentationStateMessage("presenter-a", 0, 7, 1);
 assert.deepEqual(initialState, {

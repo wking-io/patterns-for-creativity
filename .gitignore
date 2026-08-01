@@ -1,6 +1,26 @@
-.toolbar/
+# Dependencies and build output
 node_modules/
-.DS_Store
 /dist
 /.tmp
+/coverage
+
+# Local tooling
+.toolbar/
+.vite/
+.wrangler/
+*.log
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# Operating-system files
+.DS_Store
+Thumbs.db
+
+# Large working source that must not be committed
 /src/slides/19-exposure-practice/fish.mp4
