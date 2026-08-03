@@ -672,7 +672,7 @@ export function ExposurePracticeCollectionSlide({
                         decoding="async"
                         draggable={false}
                         height={image.height}
-                        loading={loadImagesEagerly ? "eager" : "lazy"}
+                        loading="eager"
                         src={image.src}
                         width={image.width}
                       />

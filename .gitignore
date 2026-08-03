@@ -24,3 +24,6 @@ Thumbs.db
 
 # Large working source that must not be committed
 /src/slides/19-exposure-practice/fish.mp4
+
+# Locally licensed fonts that must not be redistributed
+/public/fonts/local-original/

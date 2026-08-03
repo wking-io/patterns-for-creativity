@@ -71,6 +71,112 @@ target for forks. Use a Worker name and route in infrastructure you control.
 For a deeper architectural and workflow guide, see
 [`docs/agents/codebase-guide.md`](docs/agents/codebase-guide.md).
 
+## Restore the original typography
+
+The public repository uses redistributable substitutes for four fonts from the
+original deck. If you want to restore its original typography, obtain the fonts
+from their creators and make sure your licenses cover self-hosted web use:
+
+| Original font | Used for | Public-repo substitute | Source |
+| --- | --- | --- | --- |
+| OffBit Regular and Bold | Pixel display type | Silkscreen | [Power Type on MyFonts](https://www.myfonts.com/collections/offbit-font-power-type) |
+| SCHABO X Condensed | Condensed display type | Big Shoulders Display | [Tom Robin Karlsson](https://tomrobin.co/) |
+| NOPPO Solid | Rounded headline type | Dela Gothic One | [Studio Noppo](https://studionoppo.gumroad.com/l/noppo-font) |
+| Redaction Regular and Bold | Editorial serif type | Libre Baskerville | [MCKL](https://www.mckltype.com/typefaces/redaction) |
+
+1. Copy the licensed font files into the ignored
+   `public/fonts/local-original/` directory. The example below expects these
+   names; either rename the supplied files or adjust the URLs and `format()`
+   values to match them:
+
+   ```text
+   public/fonts/local-original/
+   ├── OffBit-Regular.woff2
+   ├── OffBit-Bold.woff2
+   ├── SCHABO-XCondensed.woff2
+   ├── Noppo-Solid.otf
+   ├── Redaction-Regular.woff2
+   └── Redaction-Bold.woff2
+   ```
+
+2. Add the following declarations near the top of `src/styles.css`, after the
+   Fontsource imports:
+
+   ```css
+   @font-face {
+     font-family: "OffBit";
+     font-display: swap;
+     font-style: normal;
+     font-weight: 400;
+     src: url("/fonts/local-original/OffBit-Regular.woff2") format("woff2");
+   }
+
+   @font-face {
+     font-family: "OffBit";
+     font-display: swap;
+     font-style: normal;
+     font-weight: 700;
+     src: url("/fonts/local-original/OffBit-Bold.woff2") format("woff2");
+   }
+
+   @font-face {
+     font-family: "SCHABO";
+     font-display: swap;
+     font-style: normal;
+     font-weight: 400;
+     src: url("/fonts/local-original/SCHABO-XCondensed.woff2") format("woff2");
+   }
+
+   @font-face {
+     font-family: "Noppo";
+     font-display: swap;
+     font-style: normal;
+     font-weight: 400;
+     src: url("/fonts/local-original/Noppo-Solid.otf") format("opentype");
+   }
+
+   @font-face {
+     font-family: "Redaction";
+     font-display: swap;
+     font-style: normal;
+     font-weight: 400;
+     src: url("/fonts/local-original/Redaction-Regular.woff2") format("woff2");
+   }
+
+   @font-face {
+     font-family: "Redaction";
+     font-display: swap;
+     font-style: normal;
+     font-weight: 700;
+     src: url("/fonts/local-original/Redaction-Bold.woff2") format("woff2");
+   }
+   ```
+
+3. In the `@theme` block in `src/styles.css`, restore the two shared display
+   stacks while retaining the public fonts as fallbacks:
+
+   ```css
+   --font-offbit: "OffBit", "Silkscreen", sans-serif;
+   --font-schabo: "SCHABO", "Big Shoulders Display Variable", sans-serif;
+   ```
+
+4. In the same file, replace the three direct font declarations:
+
+   ```css
+   /* Replace "Dela Gothic One", sans-serif */
+   font-family: "Noppo", "Dela Gothic One", sans-serif;
+
+   /* Replace both occurrences of "Libre Baskerville", serif */
+   font-family: "Redaction", "Libre Baskerville", serif;
+   ```
+
+5. Run `pnpm verify`, then visually check the deck and its offline build.
+
+Do not commit the downloaded font files unless their licenses explicitly allow
+redistribution. The offline build can embed referenced assets in downloadable
+HTML, so distributing that build may require rights beyond an ordinary website
+license.
+
 ## Publication and licensing
 
 Project-authored source code, documentation, presentation text, and original
